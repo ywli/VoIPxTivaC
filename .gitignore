@@ -1,0 +1,7 @@
+Debug/
+Release/
+.ccsproject
+.cproject
+.settings/
+workspace_vscode.code-workspace
+.project
