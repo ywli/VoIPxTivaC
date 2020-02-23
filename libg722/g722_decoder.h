@@ -32,7 +32,7 @@ typedef void G722_DEC_CTX;
 #define _G722_DEC_CTX_DEFINED
 #endif
 
-G722_DEC_CTX *g722_decoder_new(int rate, int options);
+int g722_decoder_new(G722_DEC_CTX *s, int rate, int options);
 int g722_decoder_destroy(G722_DEC_CTX *s);
 int g722_decode(G722_DEC_CTX *s, const uint8_t g722_data[], int len, int16_t amp[]);
 

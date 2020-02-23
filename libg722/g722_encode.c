@@ -29,10 +29,8 @@
 
 /*! \file */
 
-#include <stdio.h>
 #include <inttypes.h>
-#include <memory.h>
-#include <stdlib.h>
+#include <string.h>
 
 #include "g722_private.h"
 #include "g722_encoder.h"
@@ -147,13 +145,11 @@ static void block4(G722_ENC_CTX *s, int band, int d)
 }
 /*- End of function --------------------------------------------------------*/
 
-G722_ENC_CTX *
-g722_encoder_new(int rate, int options)
-{
-    G722_ENC_CTX *s;
 
-    if ((s = (G722_ENC_CTX *) malloc(sizeof(*s))) == NULL)
-        return NULL;
+int g722_encoder_new(G722_ENC_CTX *s, int rate, int options)
+{
+    if (s == NULL)
+        return -1;
     memset(s, 0, sizeof(*s));
     if (rate == 48000)
         s->bits_per_sample = 6;
@@ -169,13 +165,12 @@ g722_encoder_new(int rate, int options)
         s->packed = FALSE;
     s->band[0].det = 32;
     s->band[1].det = 8;
-    return s;
+    return 0;
 }
 /*- End of function --------------------------------------------------------*/
 
 int g722_encoder_destroy(G722_ENC_CTX *s)
 {
-    free(s);
     return 0;
 }
 /*- End of function --------------------------------------------------------*/

@@ -32,7 +32,7 @@ typedef void G722_ENC_CTX;
 #define _G722_ENC_CTX_DEFINED
 #endif
 
-G722_ENC_CTX *g722_encoder_new(int rate, int options);
+int g722_encoder_new(G722_ENC_CTX *s, int rate, int options);
 int g722_encoder_destroy(G722_ENC_CTX *s);
 int g722_encode(G722_ENC_CTX *s, const int16_t amp[], int len, uint8_t g722_data[]);
 
