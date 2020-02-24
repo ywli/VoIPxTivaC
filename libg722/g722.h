@@ -46,4 +46,88 @@ enum
     G722_PACKED = 0x0002
 };
 
+struct g722_encode_state
+{
+    /*! TRUE if the operating in the special ITU test mode, with the band split filters
+             disabled. */
+    int itu_test_mode;
+    /*! TRUE if the G.722 data is packed */
+    int packed;
+    /*! TRUE if encode from 8k samples/second */
+    int eight_k;
+    /*! 6 for 48000kbps, 7 for 56000kbps, or 8 for 64000kbps. */
+    int bits_per_sample;
+
+    /*! Signal history for the QMF */
+    int x[24];
+
+    struct
+    {
+        int s;
+        int sp;
+        int sz;
+        int r[3];
+        int a[3];
+        int ap[3];
+        int p[3];
+        int d[7];
+        int b[7];
+        int bp[7];
+        int sg[7];
+        int nb;
+        int det;
+    } band[2];
+
+    unsigned int in_buffer;
+    int in_bits;
+    unsigned int out_buffer;
+    int out_bits;
+};
+typedef struct g722_encode_state G722_ENC_CTX;
+
+int g722_encoder_config(G722_ENC_CTX *s, int rate, int options);
+int g722_encode(G722_ENC_CTX *s, const int16_t amp[], int len, uint8_t g722_data[]);
+
+struct g722_decode_state
+{
+    /*! TRUE if the operating in the special ITU test mode, with the band split filters
+             disabled. */
+    int itu_test_mode;
+    /*! TRUE if the G.722 data is packed */
+    int packed;
+    /*! TRUE if decode to 8k samples/second */
+    int eight_k;
+    /*! 6 for 48000kbps, 7 for 56000kbps, or 8 for 64000kbps. */
+    int bits_per_sample;
+
+    /*! Signal history for the QMF */
+    int x[24];
+
+    struct
+    {
+        int s;
+        int sp;
+        int sz;
+        int r[3];
+        int a[3];
+        int ap[3];
+        int p[3];
+        int d[7];
+        int b[7];
+        int bp[7];
+        int sg[7];
+        int nb;
+        int det;
+    } band[2];
+    
+    unsigned int in_buffer;
+    int in_bits;
+    unsigned int out_buffer;
+    int out_bits;
+};
+typedef struct g722_decode_state G722_DEC_CTX;
+
+int g722_decoder_config(G722_DEC_CTX *s, int rate, int options);
+int g722_decode(G722_DEC_CTX *s, const uint8_t g722_data[], int len, int16_t amp[]);
+
 #endif
