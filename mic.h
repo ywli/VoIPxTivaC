@@ -11,9 +11,7 @@
 
 int micInit(void);
 
-void micISR(void);
-
-uint16_t* micReadBlock(void);
+int micReadBlock(uint16_t *blockP);
 
 int micStart(void);
 

@@ -1,36 +1,77 @@
 // TI library
-#include "tm4c123gh6pm.h"
 #include "sys.h"
+#include "cbuff_dma.h"
+#include "tm4c123gh6pm.h"
 #include <stdint.h>
 
 
-#define MIC_BUFFER_NUM_OF_SP 160
-#define MIC_BUFFER_SIZE      640
-
+#define MIC_BLOCK_MS         20
+#define MIC_SAMPLE_RATE_HZ   8000
+#define MIC_BLOCK_NUM_OF_SP  (MIC_SAMPLE_RATE_HZ * MIC_BLOCK_MS / 1000)
+#define MIC_BLOCK_SIZE       (MIC_BLOCK_NUM_OF_SP * sizeof(uint16_t))
+#define MIC_BUFFER_NUM_OF_SP (MIC_BLOCK_NUM_OF_SP * 4)
+#define MIC_BUFFER_SIZE      (MIC_BUFFER_NUM_OF_SP * sizeof(uint16_t))
+#define MIC_DMA_CH           14
 struct micControlBlock
 {
-	uint16_t micBuffer[MIC_BUFFER_SIZE];
-	uint16_t micBufferWrIdx;
-	uint16_t micBufferRdIdx;
-	uint16_t micBufferAvailable;
-	uint8_t micDmaPhase;
+	uint16_t micBufferArray[MIC_BUFFER_NUM_OF_SP];
+	cbuff_dma_t micBuffer;
 };
 
-static struct micControlBlock micCb;
+struct micControlBlock micCb;
+
+static void micDma(void)
+{
+    static uint8_t phase = 0;
+    uint8_t dmaChId;
+    uint16_t *addr;
+    int32_t len;
+
+    /* prepare space in DMA buffer */
+    if (cbuff_dma_enqueue_driver1(
+        &micCb.micBuffer, 
+        (unsigned char*)&addr, 
+        &len) == 0)
+	{
+		return;
+	}
+
+    /* phase process */
+    if (phase == 0)
+    {
+        phase = 1;
+        dmaChId = MIC_DMA_CH;
+    }
+    else
+    {
+        phase = 0;
+        dmaChId = MIC_DMA_CH + 32;
+    }
+
+	len = len/2;
+
+    /* DMA channel control description */
+	dmaTable[dmaChId].dstAddr = (uint32_t) (addr + len - 1);
+	dmaTable[dmaChId].srcAddr = (uint32_t) &ADC0_SSFIFO0_R;
+	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_16  |
+							  UDMA_CHCTL_DSTSIZE_16 |
+							  UDMA_CHCTL_SRCINC_NONE|
+							  UDMA_CHCTL_SRCSIZE_16 |
+							  UDMA_CHCTL_ARBSIZE_1  |//revise
+							  (((len - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
+							  UDMA_CHCTL_NXTUSEBURST | //revise
+							  UDMA_CHCTL_XFERMODE_PINGPONG;
+}
 
 int micInit(void)
 {
-	uint8_t dmaChId;
-	uint16_t i;
+	const uint8_t dmaChId = MIC_DMA_CH;
 
-	for (i = 0; i < MIC_BUFFER_SIZE; i++)
-	{
-		micCb.micBuffer[i] = 0xffff;
-	}
-	micCb.micBufferRdIdx = 0;
-	micCb.micBufferWrIdx = 0;
-	micCb.micBufferAvailable = 0;
-	micCb.micDmaPhase = 0;
+	cbuff_dma_init(
+		&micCb.micBuffer,
+		(unsigned char*) &micCb.micBufferArray[0],
+		MIC_BUFFER_SIZE,
+		MIC_BLOCK_SIZE);
 
 	/* assuming Sec. 13.4.1 module init and 13.4.2 sample sequence config are complete*/
 
@@ -70,7 +111,6 @@ int micInit(void)
 	/* 7- enable the sample sequencer0, p. 821  */
 	ADC0_ACTSS_R |= ADC_ACTSS_ASEN0;
 
-	
 	/* process interrupts revise */
 
 	/* 
@@ -93,7 +133,7 @@ int micInit(void)
 	//TIMER0_IMR_R = 0x00000001;//revise
 
 	/* 7 enable timer, p.737 */
-	TIMER0_CTL_R = TIMER_CTL_TAOTE | TIMER_CTL_TAEN;
+	//TIMER0_CTL_R = TIMER_CTL_TAOTE | TIMER_CTL_TAEN;
 
 	/* 8 omitted */
 
@@ -102,8 +142,7 @@ int micInit(void)
 	 */
 
 	/* channel attribut */
-	dmaChId = 14;
-
+	
 	/* configure channel assignment, CH14, enc 0 = ADC0 SS0 */
 	UDMA_CHMAP1_R &= ~UDMA_CHMAP1_CH14SEL_M;
 	UDMA_CHMAP1_R |= ((0 << UDMA_CHMAP1_CH14SEL_S) & UDMA_CHMAP1_CH14SEL_M);
@@ -121,87 +160,41 @@ int micInit(void)
 	UDMA_REQMASKCLR_R |= (1 << dmaChId);
 
 	/* channel control structure */
-	/* primary */
-	dmaTable[dmaChId].dstAddr = (uint32_t) &micCb.micBuffer[MIC_BUFFER_NUM_OF_SP - 1];
-	dmaTable[dmaChId].srcAddr = (uint32_t) &ADC0_SSFIFO0_R;
-	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_16  |
-							  UDMA_CHCTL_DSTSIZE_16 |
-							  UDMA_CHCTL_SRCINC_NONE|
-							  UDMA_CHCTL_SRCSIZE_16 |
-							  UDMA_CHCTL_ARBSIZE_1  |//revise
-							  (((MIC_BUFFER_NUM_OF_SP - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
-							  UDMA_CHCTL_NXTUSEBURST | //revise
-							  UDMA_CHCTL_XFERMODE_PINGPONG;
+	micDma();
+	micDma();
 
-	/* alternative */
-	dmaTable[dmaChId + 32].dstAddr = (uint32_t) &micCb.micBuffer[2*MIC_BUFFER_NUM_OF_SP - 1];
-	dmaTable[dmaChId + 32].srcAddr = dmaTable[dmaChId].srcAddr;
-	dmaTable[dmaChId + 32].chCtl = dmaTable[dmaChId].chCtl;
-
-	/* configure peripheral interrupt revise */
+	/* configure peripheral interrupt */
 
 	/* enable uDMA channel */
 	UDMA_ENASET_R |= (1 << dmaChId);
+
+	TIMER0_CTL_R = TIMER_CTL_TAOTE | TIMER_CTL_TAEN;
 
 	return 0;
 }
 
 void micISR(void)
 {
-	uint8_t dmaChId;
-	uint32_t idx;
+	const uint8_t dmaChId = MIC_DMA_CH;
 
-	/* index increment */
-	micCb.micBufferWrIdx += MIC_BUFFER_NUM_OF_SP;
-	micCb.micBufferWrIdx %= MIC_BUFFER_SIZE;
-	if (micCb.micBufferAvailable < MIC_BUFFER_SIZE)
-	{
-		micCb.micBufferAvailable += MIC_BUFFER_NUM_OF_SP;
-	}
-	if (micCb.micDmaPhase == 0)
-	{
-		micCb.micDmaPhase = 1;
-		dmaChId = 14;
-	}
-	else
-	{
-		micCb.micDmaPhase = 0;
-		dmaChId = 14 + 32;
-	}
-	
-	idx = (micCb.micBufferWrIdx + MIC_BUFFER_NUM_OF_SP)%MIC_BUFFER_SIZE;
-	idx += MIC_BUFFER_NUM_OF_SP - 1;
+	/* confirm one block received */
+	cbuff_dma_enqueue_driver2(&micCb.micBuffer);
 
-	/* reload DMA channel control structure */
-	dmaTable[dmaChId].dstAddr = (uint32_t) &micCb.micBuffer[idx];
-	dmaTable[dmaChId].srcAddr = (uint32_t) &ADC0_SSFIFO0_R;
-	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_16  |
-							  UDMA_CHCTL_DSTSIZE_16 |
-							  UDMA_CHCTL_SRCINC_NONE|
-							  UDMA_CHCTL_SRCSIZE_16 |
-							  UDMA_CHCTL_ARBSIZE_1  |//revise
-							  (((MIC_BUFFER_NUM_OF_SP - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
-							  UDMA_CHCTL_NXTUSEBURST | //revise
-							  UDMA_CHCTL_XFERMODE_PINGPONG;
+	/* reload next block */
+	micDma();
 
 	/* enable uDMA channel */
 	UDMA_ENASET_R |= (1 << dmaChId);
+
 	return;
 }
 
-uint16_t* micReadBlock(void)
+int micReadBlock(uint16_t *blockP)
 {
-	uint16_t *res;
-
-	res = 0;
-	if (micCb.micBufferAvailable >= MIC_BUFFER_NUM_OF_SP)
-	{
-		res = &micCb.micBuffer[micCb.micBufferRdIdx];
-		micCb.micBufferRdIdx = (micCb.micBufferRdIdx + MIC_BUFFER_NUM_OF_SP)%MIC_BUFFER_SIZE;
-		micCb.micBufferAvailable -= MIC_BUFFER_NUM_OF_SP;
-	}
-
-	return res;
+	return cbuff_dma_dequeue_app(
+				&micCb.micBuffer,
+				(unsigned char *) blockP,
+				MIC_BLOCK_SIZE);
 }
 
 int micStart(void)
