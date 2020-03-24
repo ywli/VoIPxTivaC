@@ -50,12 +50,20 @@ cbuff_dma_init(
 int
 cbuff_dma_reset(cbuff_dma_t *buff)
 {
+	int i;
+
+
 	buff->start = 0;
 	buff->end = 0;
 	buff->numOfAvail = 0;
 	buff->numOfXfer = 0;
 	buff->numOfFree = buff->size;
 	buff->numOfOverrun = 0;
+
+	for(i = 0; i<buff->size; i++)
+	{
+		buff->buff[i] = 0xff;
+	}
 
 	return 1;
 }
@@ -75,13 +83,15 @@ cbuff_dma_enqueue_app(
 	unsigned char *dateP, 
 	int len)
 {
+	int ret;
 	// Assume everything will be queued
 	int end = buff->end;
 	int size = buff->size;
-	int avail = buff->numOfAvail;
+	int free = buff->numOfFree;
+	ret = len;
 
 	// Not enough space in the buffer
-	if (avail < len)
+	if (free < len)
 	{
 		return 0;
 	}
@@ -106,7 +116,7 @@ cbuff_dma_enqueue_app(
 	// Update buffer with new end value
 	buff->end = end;
 
-	return len;
+	return ret;
 }
 
 /*
@@ -130,7 +140,7 @@ cbuff_dma_dequeue_driver1(
 	int len;
 
 	/* DMA buffer empty */
-	if (buff->numOfAvail > 0) 
+	if (avail == 0)
 	{
 		return 0;
 	}
@@ -268,7 +278,7 @@ cbuff_dma_enqueue_driver1(
 	if (tmp > 0)
 	{
 		/* update buffer */
-		buff->start += tmp;
+		buff->start = (buff->start + tmp) % size;
 		buff->numOfAvail -= tmp;
 		buff->numOfFree = 0;
 
