@@ -110,9 +110,9 @@ header file. */
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
 
 /* Map the FreeRTOS port interrupt handlers to their CMSIS standard names. */
-#define xPortPendSVHandler                    PendSV_Handler
-#define vPortSVCHandler                       SVC_Handler
-#define xPortSysTickHandler                   SysTick_Handler
+//#define xPortPendSVHandler                    PendSV_Handler
+//#define vPortSVCHandler                       SVC_Handler
+//#define xPortSysTickHandler                   SysTick_Handler
 
 
 #endif /* FREERTOS_CONFIG_H */
