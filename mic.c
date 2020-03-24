@@ -30,7 +30,7 @@ static void micDma(void)
     /* prepare space in DMA buffer */
     if (cbuff_dma_enqueue_driver1(
         &micCb.micBuffer, 
-        (unsigned char*)&addr, 
+        (unsigned char**)&addr,
         &len) == 0)
 	{
 		return;
@@ -61,6 +61,9 @@ static void micDma(void)
 							  (((len - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
 							  UDMA_CHCTL_NXTUSEBURST | //revise
 							  UDMA_CHCTL_XFERMODE_PINGPONG;
+
+	/* enable uDMA channel */
+	UDMA_ENASET_R |= (1 << MIC_DMA_CH);
 }
 
 int micInit(void)
@@ -175,16 +178,12 @@ int micInit(void)
 
 void micISR(void)
 {
-	const uint8_t dmaChId = MIC_DMA_CH;
 
 	/* confirm one block received */
 	cbuff_dma_enqueue_driver2(&micCb.micBuffer);
 
 	/* reload next block */
 	micDma();
-
-	/* enable uDMA channel */
-	UDMA_ENASET_R |= (1 << dmaChId);
 
 	return;
 }
