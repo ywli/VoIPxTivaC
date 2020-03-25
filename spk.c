@@ -11,6 +11,7 @@
 #define SPK_BUFFER_SIZE      (SPK_BUFFER_NUM_OF_SP * SPK_SAMPLE_SIZE)
 #define SPK_BLOCK_SIZE       SPK_BUFFER_SIZE/4
 #define SPK_DMA_CH           11
+#define SPK_ARCH             1 //1- SPI slave + PWM, 2- SPI master
 
 struct spkControlBlock
 {
@@ -74,9 +75,11 @@ void spkDma(void)
 
 	return;
 }
+int test = 0;
 
 void spkISR(void)
 {
+	test++;
 	/* confirm block DMA transfer */
 	//cbuff_dma_dequeue_driver2(&spkCb.spkBuffer);
 
@@ -99,19 +102,15 @@ int spkInit(void)
 	 * 8k frame clock 
 	 * 32* 8k bit clock 
 	 */
-
-	/* 1- enable PWM clock */
-	SYSCTL_RCGC0_R |= SYSCTL_RCGC0_PWM0;
-
-	/* 2-, 3-, 4- omitted GPIO config */
-
+	#if (SPK_ARCH == 1)
 	/* 5- PWM clock is system clock */
 	SYSCTL_RCC_R &= ~SYSCTL_RCC_USEPWMDIV;
 
 	/* 6- configue PWM generator */
-	PWM0_CTL_R = 0;
-	PWM0_2_GENA_R = PWM_2_GENA_ACTLOAD_ZERO|
-					PWM_2_GENA_ACTCMPAD_ONE;
+	PWM0_2_CTL_R = 0;
+	PWM0_1_CTL_R = 0;
+	PWM0_2_GENB_R = PWM_2_GENB_ACTLOAD_ZERO|
+					PWM_2_GENB_ACTCMPAD_ONE;
 	PWM0_1_GENA_R = PWM_1_GENA_ACTLOAD_ZERO|
 					PWM_1_GENA_ACTCMPAD_ONE;
 
@@ -120,30 +119,41 @@ int spkInit(void)
 	PWM0_1_LOAD_R = 9984;//N1*32
 
 	/* 8- pulse width */
-	PWM0_2_CMPA_R = 156;//N1/2
+	PWM0_2_CMPB_R = 156;//N1/2
 	PWM0_1_CMPA_R = 4992;//N1*16
 
 	/* 9- start PWM timer */
-	PWM0_CTL_R |= PWM_0_CTL_ENABLE;
+	PWM0_2_CTL_R |= PWM_2_CTL_ENABLE | PWM_2_CTL_DEBUG;
+	PWM0_1_CTL_R |= PWM_1_CTL_ENABLE | PWM_1_CTL_DEBUG;
 
 	/* 10- enable PWM output */
 	PWM0_ENABLE_R |= PWM_ENABLE_PWM5EN|
 	                 PWM_ENABLE_PWM2EN;
 
+	#endif
 
 	/* 
 	 * SPI 
 	 */
 	/* 1- enable ssi0 module */
 	SYSCTL_RCGCSSI_R |= SYSCTL_RCGCSSI_R0;
-
+	while ((SYSCTL_RCGCSSI_R & SYSCTL_RCGCSSI_R0) == 0)
+	{};
+	
 	/* 2-, 3-, 4-, 5- omitted */
 
 	/* 1- disable */
 	SSI0_CR1_R = 0;
-
+	while (SSI0_CR1_R != 0)
+	{}
+	
+	#if (SPK_ARCH == 1)
 	/* 2- set slave SSI */
 	SSI0_CR1_R = SSI_CR1_MS;
+	#else
+	/* 2- set master SSI */
+	SSI0_CR1_R = 0;
+	#endif
 
 	/* 3- configure SSI clock to system clock */
 	SSI0_CC_R = 0;
@@ -159,6 +169,10 @@ int spkInit(void)
 	/* 6- uDMA config */
 	SSI0_DMACTL_R |= SSI_DMACTL_TXDMAE;
 
+	/* enable interrupt, interrupt 7 SSI0*/
+	NVIC_EN0_R |= (1<<7);
+	SSI0_IM_R = SSI_IM_TXIM;
+
 	/* 7- enable SSI0 */
 	SSI0_CR1_R |= SSI_CR1_SSE;
 
@@ -167,7 +181,6 @@ int spkInit(void)
 	 */
 	uint8_t dmaChId;
 	
-
 	/* channel attribut */
 	dmaChId = SPK_DMA_CH;
 
@@ -183,6 +196,8 @@ int spkInit(void)
 	
 	/* 4- clear mask */
 	UDMA_REQMASKCLR_R |= (1 << dmaChId);
+
+	spkDma();
 
 	return 0;
 }

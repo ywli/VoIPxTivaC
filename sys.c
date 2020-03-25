@@ -82,18 +82,20 @@ int sysInit(void)
 	/* 3- control table base */
 	UDMA_CTLBASE_R = (uint32_t) &dmaTable[0];
 
-
-
-
 	/*
 	 * GPIO Speaker config
 	 * used pins:
 	 *   J1.06, PE5, M0PWM5, Bit Clock
 	 *   J1.07, PB4, M0PWM2, Frame Clock
-	 *   J1.08, PA5, SSI0TX, tbd pull-up or pull-down
+	 *   J1.08, PA5, SSI0TX, Data bit, pull-down
 	 *   J2.09, PA3, SSI0FSS
 	 *   J2.10, PA2, SSI0CLK
 	 */
+	/* 1- enable PWM clock */
+	SYSCTL_RCGC0_R |= SYSCTL_RCGC0_PWM0;
+	while ((SYSCTL_RCGC0_R & SYSCTL_RCGC0_PWM0) == 0)
+	{};
+
 	/* 2- enable clock to gpio module */
 	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R1|
 	                     SYSCTL_RCGCGPIO_R4|
@@ -103,7 +105,8 @@ int sysInit(void)
 	while ((SYSCTL_PRGPIO_R & SYSCTL_PRGPIO_R4) == 0)// wait until PortB is ready
     {};                                     
 	while ((SYSCTL_PRGPIO_R & SYSCTL_PRGPIO_R0) == 0)// wait until PortA is ready
-    {};                                     
+    {};
+
 	/* 3- gpio gpioafsel register config */
 	GPIO_PORTE_AFSEL_R |= (1<<5);// PE5
 	GPIO_PORTB_AFSEL_R |= (1<<4);// PB4
@@ -127,6 +130,7 @@ int sysInit(void)
 
 	/* pull down PA5 */
 	GPIO_PORTA_PDR_R |= (1 << 5);
+	
 	/* 
 	 * Wifi config 
 	 * used pins: 
