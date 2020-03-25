@@ -97,8 +97,6 @@ static void wifiTxDma(void)
     UDMA_ENASET_R |= (1 << dmaChId);
 }
 
-int test = 0;
-int test2 = 0;
 void wifiISR(void)
 {
     uint32_t reg;
@@ -108,8 +106,6 @@ void wifiISR(void)
     /* recv interrupt */
     if (reg & UART_MIS_RXMIS)
     {
-        test++;
-
         /* clear interrupt */
         //UART4_ICR_R |= UART_ICR_RXIC;
 
@@ -123,8 +119,6 @@ void wifiISR(void)
     /* transmit interrupt */
     if (reg & UART_MIS_TXMIS)
     {
-        test2++;
-
         /* clear interrupt */
         UART4_ICR_R |= UART_ICR_TXIC;
         
