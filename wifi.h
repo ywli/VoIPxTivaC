@@ -20,4 +20,11 @@ int wifiWrite(
     uint8_t *dataP,
     uint16_t dataLen);
 
+int wifiConnect(void);
+
+int wifiPktSend(
+    unsigned char *dataP,
+    int dataLen);
+    
+void wifiBackgroundTask(void);
 #endif // __WIFI_H__

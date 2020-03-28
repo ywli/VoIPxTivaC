@@ -2,22 +2,39 @@
 #include "tm4c123gh6pm.h"
 #include "sys.h"
 #include "cbuff_dma.h"
+#include "dmaBuffer.h"
 #include <stdint.h>
 
-#define WIFI_BUFFER_SIZE 120
-#define WIFI_TRANSPORT_SIZE 60
-#define WIFI_DMA_CH_RX 18
-#define WIFI_DMA_CH_TX 19
+
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+#define WIFI_BUFFER_SIZE        1024
+#define WIFI_TX_BUFFER_SIZE     2048
+#define WIFI_TRANSPORT_SIZE     64
+#define WIFI_DMA_CH_RX          18
+#define WIFI_DMA_CH_TX          19
+#define WIFI_PKT_NUM_OF         5
+
+// typedef struct{
+//     int wifiPktSize;
+//     uint8_t *wifiPktP;
+// }wifiPktBuffer_t;
 
 struct wifiControlBlock
 {
-	uint8_t wifiTxArray[WIFI_BUFFER_SIZE];
-    uint8_t wifiRxArray[WIFI_BUFFER_SIZE];
     cbuff_dma_t wifiTxBuffer;
     cbuff_dma_t wifiRxBuffer;
+    //dmaBuffer_t wifiTxPktBuffer;
 };
 
 struct wifiControlBlock wifiCb;
+
+/* buffer */
+uint8_t wifiTxArray[WIFI_TX_BUFFER_SIZE];
+uint8_t wifiRxArray[WIFI_BUFFER_SIZE];
+//wifiPktBuffer_t wifiTxPkt[WIFI_PKT_NUM_OF];
 
 static void wifiRxDma(void)
 {
@@ -55,14 +72,15 @@ static void wifiRxDma(void)
     /* re-enable DMA */
     UDMA_ENASET_R |= (1 << WIFI_DMA_CH_RX);
 }
-
+int wifitest = 0;
 static void wifiTxDma(void)
 {
-    uint8_t dmaChId;
+    uint8_t dmaChId = WIFI_DMA_CH_TX;
     uint8_t *addr;
     int32_t len;
 
-    dmaChId = WIFI_DMA_CH_TX;
+    /* test */
+    wifitest++;
 
     /* get data from buffer */
     if (cbuff_dma_dequeue_driver1(
@@ -70,11 +88,18 @@ static void wifiTxDma(void)
         (unsigned char **) &addr,
         &len) == 0)
     {
+        /* no data to send */
+        return;
+    }
+    
+    /* still running */
+    if (UDMA_ENASET_R & (1 << dmaChId))
+    {
         return;
     }
 
-    /* still running */
-    if (UDMA_ENASET_R & (1 << dmaChId))
+    /* UART still full */
+    if (UART4_FR_R & UART_FR_TXFF)
     {
         return;
     }
@@ -97,37 +122,42 @@ static void wifiTxDma(void)
     UDMA_ENASET_R |= (1 << dmaChId);
 }
 
-void wifiISR(void)
+void wifiBackgroundTask(void)
 {
-    uint32_t reg;
-
-    reg = UART4_MIS_R;
-
-    /* recv interrupt */
-    if (reg & UART_MIS_RXMIS)
+    /* TX */
+    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) == 0)
     {
-        /* clear interrupt */
-        //UART4_ICR_R |= UART_ICR_RXIC;
-
-        /* confirm block received */
-        cbuff_dma_enqueue_driver2(&wifiCb.wifiRxBuffer);
-
-        /* prepare next block */
-        wifiRxDma();
+        /* transfer completed */
+        if (wifiCb.wifiTxBuffer.numOfXfer > 0)
+        {
+            /* confirm block transferred */
+            cbuff_dma_dequeue_driver2(&wifiCb.wifiTxBuffer);
+        }
+        /* idle */
+        else
+        {
+            /* initia next transfer */
+            wifiTxDma();
+        }
     }
-
-    /* transmit interrupt */
-    if (reg & UART_MIS_TXMIS)
+    
+    /* RX */
+    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_RX)) == 0)
     {
-        /* clear interrupt */
-        UART4_ICR_R |= UART_ICR_TXIC;
-        
-        /* confirm block sent */
-        cbuff_dma_dequeue_driver2(&wifiCb.wifiTxBuffer);
+        /* transfer completed */
+        if (wifiCb.wifiRxBuffer.numOfXfer > 0)
+        {
+            /* confirm block transferred */
+            cbuff_dma_enqueue_driver2(&wifiCb.wifiRxBuffer);
+        }
+        /* idle */
+        else
+        {
+            /* initia next transfer */
+            wifiRxDma();
+        }
+    }  
 
-        /* prepare next block */
-        wifiTxDma();
-    }
 }
 
 int wifiInit(void)
@@ -137,16 +167,22 @@ int wifiInit(void)
     /* initialize control block */
     cbuff_dma_init(
         &wifiCb.wifiTxBuffer,
-        &wifiCb.wifiTxArray[0],
-        WIFI_BUFFER_SIZE,
+        &wifiTxArray[0],
+        WIFI_TX_BUFFER_SIZE,
         WIFI_TRANSPORT_SIZE);
 
     cbuff_dma_init(
         &wifiCb.wifiRxBuffer,
-        &wifiCb.wifiRxArray[0],
+        &wifiRxArray[0],
         WIFI_BUFFER_SIZE,
         WIFI_TRANSPORT_SIZE);
 
+    // dmaBufferInit(
+    //     &wifiCb.wifiTxPktBuffer,
+    //     (unsigned char*) &wifiTxPkt[0],
+    //     sizeof(wifiTxPkt),
+    //     sizeof(wifiTxPkt[0]));
+    
     /* UART config */
     /* 1- disable UART */
     UART4_CTL_R = 0;
@@ -167,10 +203,10 @@ int wifiInit(void)
                      UART_DMACTL_TXDMAE;
 
     /* enable interrupt */
-    UART4_IM_R = UART_IM_TXIM|
-                 UART_IM_RXIM;
+    // UART4_IM_R = UART_IM_TXIM|
+    //              UART_IM_RXIM;
 
-    NVIC_EN1_R |= (1<<28);
+    // NVIC_EN1_R |= (1<<28);
 
 
     /* 7- enable UART */
@@ -246,11 +282,59 @@ int wifiWrite(
         dataLen) == 0)
     {
         /* error */
-        return -1;
+        //return -1;
     }
 
-    /* activate DMA */
-    wifiTxDma();
+    return 0;
+}
+
+/* establish a UDP connection */
+int wifiConnect(void)
+{
+    /* AT command 1 */
+    wifiWrite("AT+CIPMUX=1\r\n", 13);
+
+    /* delay */
+    vTaskDelay(100);
+    
+    /* AT command 2 */
+    wifiWrite("AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n",41);
+
+    /* delay */
+    vTaskDelay(100);
+
+    return 0;
+}
+
+/* send a UDP packet */
+int wifiPktSend(
+    unsigned char *dataP,
+    int dataLen)
+{
+    unsigned char *test = "hello\r\n";
+
+    #if 0
+    wifiWrite("AT+CIPSEND=4,7\r\n", 16);
+
+    vTaskDelay(10);
+
+    wifiWrite(test, 7);
+
+    vTaskDelay(10);
+
+    #else
+    /* AT command 1 */
+    wifiWrite("AT+CIPSEND=4,332\r\n", 18);
+
+    /* delay */
+    vTaskDelay(20);
+
+    /* send data */
+    wifiWrite(dataP, dataLen);
+
+    /* delay */
+    vTaskDelay(20);
+    #endif 
 
     return 0;
 }

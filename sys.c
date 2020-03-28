@@ -65,10 +65,9 @@ int sysInit(void)
 	while ((SYSCTL_PRTIMER_R & SYSCTL_PRTIMER_R0) == 0)
 	{};
 	/* enable DMA */
+	SYSCTL_RCGCDMA_R |= SYSCTL_RCGCDMA_R0;
 	while ((SYSCTL_PRDMA_R & SYSCTL_PRDMA_R0) == 0)
-	{
-		SYSCTL_RCGCDMA_R |= SYSCTL_RCGCDMA_R0;
-	};
+	{};
 
 	/* DMA init */
 	/* 1- DMA clock */
@@ -91,6 +90,7 @@ int sysInit(void)
 	 *   J2.09, PA3, SSI0FSS
 	 *   J2.10, PA2, SSI0CLK
 	 */
+	#if 0
 	/* 1- enable PWM clock */
 	SYSCTL_RCGC0_R |= SYSCTL_RCGC0_PWM0;
 	while ((SYSCTL_RCGC0_R & SYSCTL_RCGC0_PWM0) == 0)
@@ -130,6 +130,7 @@ int sysInit(void)
 
 	/* pull down PA5 */
 	GPIO_PORTA_PDR_R |= (1 << 5);
+	#endif
 	
 	/* 
 	 * Wifi config 
@@ -166,6 +167,10 @@ int sysInit(void)
 	 * used pins: 
 	 *   J3.09, PE3, AIN0
 	 */
+	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R4;
+    while ((SYSCTL_RCGCGPIO_R & SYSCTL_RCGCGPIO_R) == 0)// wait until ready
+    {};
+
 	/* step 3 set GPIO PE3 alternative function mode, p. 821  */
 	GPIO_PORTE_AFSEL_R |= (1<<3);
 

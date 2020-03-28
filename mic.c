@@ -1,6 +1,7 @@
 // TI library
 #include "sys.h"
 #include "cbuff_dma.h"
+#include "dmaBuffer.h"
 #include "tm4c123gh6pm.h"
 #include <stdint.h>
 
@@ -9,29 +10,49 @@
 #define MIC_SAMPLE_RATE_HZ   8000
 #define MIC_BLOCK_NUM_OF_SP  (MIC_SAMPLE_RATE_HZ * MIC_BLOCK_MS / 1000)
 #define MIC_BLOCK_SIZE       (MIC_BLOCK_NUM_OF_SP * sizeof(uint16_t))
-#define MIC_BUFFER_NUM_OF_SP (MIC_BLOCK_NUM_OF_SP * 4)
+#define MIC_BLOCK_NUM_OF     4
+#define MIC_BUFFER_NUM_OF_SP (MIC_BLOCK_NUM_OF_SP * MIC_BLOCK_NUM_OF)
 #define MIC_BUFFER_SIZE      (MIC_BUFFER_NUM_OF_SP * sizeof(uint16_t))
 #define MIC_DMA_CH           14
 struct micControlBlock
 {
 	uint16_t micBufferArray[MIC_BUFFER_NUM_OF_SP];
-	cbuff_dma_t micBuffer;
+	//cbuff_dma_t micBuffer;
+	dmaBuffer_t micBuffer2;
 };
 
+typedef struct 
+{
+	int16_t micDataBlock[MIC_BLOCK_NUM_OF_SP];
+}micDataBlock_t;
+
+
+micDataBlock_t micBuffer[MIC_BLOCK_NUM_OF];
 struct micControlBlock micCb;
 
 static void micDma(void)
 {
     static uint8_t phase = 0;
     uint8_t dmaChId;
-    uint16_t *addr;
+	int16_t *addr;
     int32_t len;
 
     /* prepare space in DMA buffer */
-    if (cbuff_dma_enqueue_driver1(
-        &micCb.micBuffer, 
-        (unsigned char**)&addr,
-        &len) == 0)
+    // if (cbuff_dma_enqueue_driver1(
+    //     &micCb.micBuffer, 
+    //     (unsigned char**)&addr,
+    //     &len) == 0)
+	// {
+	// 	return;
+	// }
+
+	addr = (int16_t *) dmaBufferPut(
+						&micCb.micBuffer2, 
+						DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
+	len = sizeof(micDataBlock_t);
+
+	/* no space for data tbd: should revise overrun behaviour */
+	if (addr == 0)
 	{
 		return;
 	}
@@ -70,12 +91,18 @@ int micInit(void)
 {
 	const uint8_t dmaChId = MIC_DMA_CH;
 
-	cbuff_dma_init(
-		&micCb.micBuffer,
-		(unsigned char*) &micCb.micBufferArray[0],
-		MIC_BUFFER_SIZE,
-		MIC_BLOCK_SIZE);
+	// cbuff_dma_init(
+	// 	&micCb.micBuffer,
+	// 	(unsigned char*) &micCb.micBufferArray[0],
+	// 	MIC_BUFFER_SIZE,
+	// 	MIC_BLOCK_SIZE);
 
+	dmaBufferInit(
+		&micCb.micBuffer2, 
+		(void*) &micBuffer[0], 
+		sizeof(micBuffer), 
+		sizeof(micBuffer[0]));
+	
 	/* assuming Sec. 13.4.1 module init and 13.4.2 sample sequence config are complete*/
 
 	/* 
@@ -180,7 +207,11 @@ void micISR(void)
 {
 
 	/* confirm one block received */
-	cbuff_dma_enqueue_driver2(&micCb.micBuffer);
+	//cbuff_dma_enqueue_driver2(&micCb.micBuffer);
+
+	dmaBufferPut(
+		&micCb.micBuffer2, 
+		DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
 
 	/* reload next block */
 	micDma();
@@ -188,12 +219,23 @@ void micISR(void)
 	return;
 }
 
-int micReadBlock(uint16_t *blockP)
+void* micReadBlock(void)
 {
-	return cbuff_dma_dequeue_app(
-				&micCb.micBuffer,
-				(unsigned char *) blockP,
-				MIC_BLOCK_SIZE);
+	void *ret;
+
+
+	ret = dmaBufferGet(
+			&micCb.micBuffer2, 
+			DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+
+	dmaBufferGet(
+		&micCb.micBuffer2, 
+		DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+	// return cbuff_dma_dequeue_app(
+	// 			&micCb.micBuffer,
+	// 			(unsigned char *) blockP,
+	// 			MIC_BLOCK_SIZE);
+	return ret;//tbd
 }
 
 int micStart(void)
