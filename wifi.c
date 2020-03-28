@@ -17,10 +17,10 @@
 #define WIFI_DMA_CH_TX          19
 #define WIFI_PKT_NUM_OF         5
 
-// typedef struct{
-//     int wifiPktSize;
-//     uint8_t *wifiPktP;
-// }wifiPktBuffer_t;
+typedef struct{
+    int wifiPktSize;
+    uint8_t *wifiPktP;
+}wifiPktBuffer_t;
 
 struct wifiControlBlock
 {
@@ -34,7 +34,13 @@ struct wifiControlBlock wifiCb;
 /* buffer */
 uint8_t wifiTxArray[WIFI_TX_BUFFER_SIZE];
 uint8_t wifiRxArray[WIFI_BUFFER_SIZE];
-//wifiPktBuffer_t wifiTxPkt[WIFI_PKT_NUM_OF];
+wifiPktBuffer_t wifiTxPkt[WIFI_PKT_NUM_OF];
+
+
+uint8_t wifiAtTest0[] = "AT+CIPMUX=1\r\n";
+uint8_t wifiAtTest1[] = "AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n";
+uint8_t wifiAtTest2[] = "AT+CIPSEND=4,332\r\n";
+uint8_t wifiAtTest3[332];
 
 static void wifiRxDma(void)
 {
@@ -122,9 +128,109 @@ static void wifiTxDma(void)
     UDMA_ENASET_R |= (1 << dmaChId);
 }
 
+static void wifiTxDma2(
+    uint8_t *addr,
+    int32_t len)
+{
+    uint8_t dmaChId = WIFI_DMA_CH_TX;
+    
+    /* still running */
+    if (UDMA_ENASET_R & (1 << dmaChId))
+    {
+        return;
+    }
+
+    /* UART still full */
+    if (UART4_FR_R & UART_FR_TXFF)
+    {
+        return;
+    }
+
+    /* clear DMA status bit */
+    UDMA_CHIS_R |= (1 << dmaChId);
+
+    /* DMA channel control description */
+    dmaTable[dmaChId].srcAddr = (uint32_t) (addr + len - 1);
+	dmaTable[dmaChId].dstAddr = (uint32_t) &UART4_DR_R;
+	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_NONE|
+							  UDMA_CHCTL_DSTSIZE_8  |
+							  UDMA_CHCTL_SRCINC_8   |
+							  UDMA_CHCTL_SRCSIZE_8  |
+							  UDMA_CHCTL_ARBSIZE_1  |//revise
+							  (((len - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
+                              UDMA_CHCTL_XFERMODE_BASIC;
+
+    /* re-enable DMA */
+    UDMA_ENASET_R |= (1 << dmaChId);
+}
+
+void wifiTestInit(void)
+{
+    /* AT command 1 */
+    wifiTxPkt[0].wifiPktP = &wifiAtTest0[0];
+    wifiTxPkt[0].wifiPktSize = 13;
+
+    /* AT command 2 */
+    wifiTxPkt[1].wifiPktP = &wifiAtTest1[0];
+    wifiTxPkt[1].wifiPktSize = 41;
+
+    /* AT command 3 */
+    wifiTxPkt[2].wifiPktP = &wifiAtTest2[0];
+    wifiTxPkt[2].wifiPktSize = 18;
+
+    /* AT command 4 */
+    wifiTxPkt[3].wifiPktP = &wifiAtTest3[0];
+    wifiTxPkt[3].wifiPktSize = 332;
+
+    int16_t *dstSampleP = (int16_t *) &wifiAtTest3[12];
+    int i;
+
+	/* 8ksps, 1011Hz, 8sp one cycle, max amp.: 32k */
+	static const uint16_t spkTestData[] = 
+	{
+		0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
+	};
+	for (i = 0; i<160; i++)
+	{
+		//dstSampleP[i] = spkTestData[(i * 3 ) % 8];//3k tone
+		dstSampleP[i] = spkTestData[(i * 1 ) % 8];//1k tone
+	}
+}
+
+void wifiTestBg(void)
+{
+    static int i = 0;
+    int pktIdx;
+
+    /* determine pktIdx */
+    if ((i % 1000) == 0)
+    {
+        pktIdx = 0;
+    }
+    else if((i % 1000) == 1)
+    {
+        pktIdx = 1;
+    }
+    else if ((i % 2) == 0)
+    {
+        pktIdx = 2;
+    }
+    else if ((i % 2) == 1)
+    {
+        pktIdx = 3;
+    }
+    i++;
+
+    /* perform DMA transfer on specified packet */
+    wifiTxDma2(
+        wifiTxPkt[pktIdx].wifiPktP, 
+        wifiTxPkt[pktIdx].wifiPktSize);
+}
+
 void wifiBackgroundTask(void)
 {
     /* TX */
+    #if TEST
     if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) == 0)
     {
         /* transfer completed */
@@ -140,6 +246,12 @@ void wifiBackgroundTask(void)
             wifiTxDma();
         }
     }
+    #else
+    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) == 0)
+    {
+        wifiTestBg();
+    }
+    #endif
     
     /* RX */
     if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_RX)) == 0)
@@ -156,8 +268,7 @@ void wifiBackgroundTask(void)
             /* initia next transfer */
             wifiRxDma();
         }
-    }  
-
+    }
 }
 
 int wifiInit(void)
@@ -182,6 +293,10 @@ int wifiInit(void)
     //     (unsigned char*) &wifiTxPkt[0],
     //     sizeof(wifiTxPkt),
     //     sizeof(wifiTxPkt[0]));
+
+    #if 1
+    wifiTestInit();
+    #endif
     
     /* UART config */
     /* 1- disable UART */
@@ -311,9 +426,9 @@ int wifiPktSend(
     unsigned char *dataP,
     int dataLen)
 {
+    #if 0
     unsigned char *test = "hello\r\n";
 
-    #if 0
     wifiWrite("AT+CIPSEND=4,7\r\n", 16);
 
     vTaskDelay(10);

@@ -48,11 +48,9 @@ void hwTask(void *pvParameters)
     for (;;)
     {
         wifiBackgroundTask();
-        vTaskDelay(2);
+        vTaskDelay(4);
     }
 }
-
-uint16_t data[160];
 
 // Main function
 int main(void)
