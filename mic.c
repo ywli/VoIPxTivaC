@@ -1,61 +1,85 @@
-// TI library
-#include "sys.h"
-#include "cbuff_dma.h"
-#include "dmaBuffer.h"
-#include "tm4c123gh6pm.h"
+/* standard library */
 #include <stdint.h>
 
+/* TI resource */
+#include "tm4c123gh6pm.h"
 
-#define MIC_BLOCK_MS         20
-#define MIC_SAMPLE_RATE_HZ   8000
-#define MIC_BLOCK_NUM_OF_SP  (MIC_SAMPLE_RATE_HZ * MIC_BLOCK_MS / 1000)
-#define MIC_BLOCK_SIZE       (MIC_BLOCK_NUM_OF_SP * sizeof(uint16_t))
-#define MIC_BLOCK_NUM_OF     4
-#define MIC_BUFFER_NUM_OF_SP (MIC_BLOCK_NUM_OF_SP * MIC_BLOCK_NUM_OF)
-#define MIC_BUFFER_SIZE      (MIC_BUFFER_NUM_OF_SP * sizeof(uint16_t))
-#define MIC_DMA_CH           14
-struct micControlBlock
-{
-	uint16_t micBufferArray[MIC_BUFFER_NUM_OF_SP];
-	//cbuff_dma_t micBuffer;
-	dmaBuffer_t micBuffer2;
-};
+/* project resource */
+#include "sys.h"
+#include "dmaBuffer.h"
+#include "mic.h"
 
+/* definition of control block */
 typedef struct 
 {
-	int16_t micDataBlock[MIC_BLOCK_NUM_OF_SP];
-}micDataBlock_t;
+	dmaBuffer_t micBuffer;
+}micControlBlock_t;
 
-
+/* audio buffer */
 micDataBlock_t micBuffer[MIC_BLOCK_NUM_OF];
-struct micControlBlock micCb;
 
+/* control block */
+micControlBlock_t micCb;
+
+/** 
+ * Module ISR callback
+ * param: none
+ * return: none
+**/
+void micISR(void)
+{
+	/* confirm one block received */
+	dmaBufferPut(
+		&micCb.micBuffer, 
+		DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
+
+	/* filter */
+	#if MIC_TEST_FILTER
+	micDataBlock_t *blockP;
+	int16_t *sampleP;
+	int sampleNum;
+	blockP = (micDataBlock_t *) dmaBufferGet(
+								&micCb.micBuffer,
+								DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+	sampleP = &blockP->micDataBlock[0];
+	sampleNum = MIC_BLOCK_NUM_OF_SP;
+	micBlockFilter(
+		sampleP, 
+		sampleP, 
+		sampleNum);
+	#endif
+
+	/* reload next block */
+	micDma();
+
+	return;
+}
+
+/** 
+ * Perform DMA transfer
+ * param: none
+ * return: none
+**/
 static void micDma(void)
 {
     static uint8_t phase = 0;
     uint8_t dmaChId;
-	int16_t *addr;
-    int32_t len;
+	micDataBlock_t *blockP;
+	int16_t *sampleP; //sample reference
+    int32_t sampleNum;   //sample number
 
     /* prepare space in DMA buffer */
-    // if (cbuff_dma_enqueue_driver1(
-    //     &micCb.micBuffer, 
-    //     (unsigned char**)&addr,
-    //     &len) == 0)
-	// {
-	// 	return;
-	// }
-
-	addr = (int16_t *) dmaBufferPut(
-						&micCb.micBuffer2, 
-						DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
-	len = sizeof(micDataBlock_t);
-
+	blockP = (micDataBlock_t *) dmaBufferPut(
+									&micCb.micBuffer, 
+									DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
 	/* no space for data tbd: should revise overrun behaviour */
-	if (addr == 0)
+	if (blockP == 0)
 	{
 		return;
 	}
+
+	sampleP = &blockP->micDataBlock[0];
+	sampleNum = MIC_BLOCK_NUM_OF_SP;
 
     /* phase process */
     if (phase == 0)
@@ -68,18 +92,18 @@ static void micDma(void)
         phase = 0;
         dmaChId = MIC_DMA_CH + 32;
     }
-
-	len = len/2;
-
+	/* 
+	* set a DMA channel for ping pong receive 
+	*/
     /* DMA channel control description */
-	dmaTable[dmaChId].dstAddr = (uint32_t) (addr + len - 1);
+	dmaTable[dmaChId].dstAddr = (uint32_t) (sampleP + sampleNum - 1);
 	dmaTable[dmaChId].srcAddr = (uint32_t) &ADC0_SSFIFO0_R;
 	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_16  |
 							  UDMA_CHCTL_DSTSIZE_16 |
 							  UDMA_CHCTL_SRCINC_NONE|
 							  UDMA_CHCTL_SRCSIZE_16 |
 							  UDMA_CHCTL_ARBSIZE_1  |//revise
-							  (((len - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
+							  (((sampleNum - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
 							  UDMA_CHCTL_NXTUSEBURST | //revise
 							  UDMA_CHCTL_XFERMODE_PINGPONG;
 
@@ -87,22 +111,45 @@ static void micDma(void)
 	UDMA_ENASET_R |= (1 << MIC_DMA_CH);
 }
 
-int micInit(void)
+/** 
+ * Initialize DMA
+ * param: none
+ * return: none
+**/
+void micDmaInit(void)
 {
 	const uint8_t dmaChId = MIC_DMA_CH;
 
-	// cbuff_dma_init(
-	// 	&micCb.micBuffer,
-	// 	(unsigned char*) &micCb.micBufferArray[0],
-	// 	MIC_BUFFER_SIZE,
-	// 	MIC_BLOCK_SIZE);
-
-	dmaBufferInit(
-		&micCb.micBuffer2, 
-		(void*) &micBuffer[0], 
-		sizeof(micBuffer), 
-		sizeof(micBuffer[0]));
+	/* channel attribut */
 	
+	/* configure channel assignment, CH14, enc 0 = ADC0 SS0 */
+	UDMA_CHMAP1_R &= ~UDMA_CHMAP1_CH14SEL_M;
+	UDMA_CHMAP1_R |= ((0 << UDMA_CHMAP1_CH14SEL_S) & UDMA_CHMAP1_CH14SEL_M);
+
+	/* 1- default channel priority level */
+	UDMA_PRIOSET_R = 0x00000000;
+
+	/* 2- use primary control structure */
+	UDMA_ALTSET_R = 0x00000000;
+
+	/* 3- respond to both single and burst requests */
+	UDMA_USEBURSTCLR_R = 0x00000000;
+	
+	/* 4- clear mask */
+	UDMA_REQMASKCLR_R |= (1 << dmaChId);
+
+	/* channel control structure */
+	micDma();
+	micDma();
+}
+
+/** 
+ * Initialize ADC
+ * param: none
+ * return: none
+**/
+void micAdcInit(void)
+{
 	/* assuming Sec. 13.4.1 module init and 13.4.2 sample sequence config are complete*/
 
 	/* 
@@ -142,7 +189,16 @@ int micInit(void)
 	ADC0_ACTSS_R |= ADC_ACTSS_ASEN0;
 
 	/* process interrupts revise */
+	return;
+}
 
+/** 
+ * Initialize Timer
+ * param: none
+ * return: none
+**/
+void micTimerInit(void)
+{
 	/* 
 	 * configure trigger source timer 
 	 */
@@ -166,87 +222,155 @@ int micInit(void)
 	//TIMER0_CTL_R = TIMER_CTL_TAOTE | TIMER_CTL_TAEN;
 
 	/* 8 omitted */
-
-	/* 
-	 * set a DMA channel for ping pong receive 
-	 */
-
-	/* channel attribut */
-	
-	/* configure channel assignment, CH14, enc 0 = ADC0 SS0 */
-	UDMA_CHMAP1_R &= ~UDMA_CHMAP1_CH14SEL_M;
-	UDMA_CHMAP1_R |= ((0 << UDMA_CHMAP1_CH14SEL_S) & UDMA_CHMAP1_CH14SEL_M);
-
-	/* 1- default channel priority level */
-	UDMA_PRIOSET_R = 0x00000000;
-
-	/* 2- use primary control structure */
-	UDMA_ALTSET_R = 0x00000000;
-
-	/* 3- respond to both single and burst requests */
-	UDMA_USEBURSTCLR_R = 0x00000000;
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
-
-	/* channel control structure */
-	micDma();
-	micDma();
-
-	/* configure peripheral interrupt */
-
-	/* enable uDMA channel */
-	UDMA_ENASET_R |= (1 << dmaChId);
-
-	TIMER0_CTL_R = TIMER_CTL_TAOTE | TIMER_CTL_TAEN;
-
-	return 0;
-}
-
-void micISR(void)
-{
-
-	/* confirm one block received */
-	//cbuff_dma_enqueue_driver2(&micCb.micBuffer);
-
-	dmaBufferPut(
-		&micCb.micBuffer2, 
-		DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
-
-	/* reload next block */
-	micDma();
-
 	return;
 }
 
-void* micReadBlock(void)
+/** 
+ * Initialize module
+ * param: none
+ * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+**/
+int micInit(void)
 {
-	void *ret;
+	/* initialize buffer */
+	dmaBufferInit(
+		&micCb.micBuffer, 
+		(void*) &micBuffer[0], 
+		sizeof(micBuffer), 
+		sizeof(micBuffer[0]));
+	
+	/* initialize ADC */
+	micAdcInit();
 
+	/* initialize Timer */
+	micTimerInit();
 
-	ret = dmaBufferGet(
-			&micCb.micBuffer2, 
-			DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+	/* initialize DMA */
+	micDmaInit();
 
-	dmaBufferGet(
-		&micCb.micBuffer2, 
-		DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
-	// return cbuff_dma_dequeue_app(
-	// 			&micCb.micBuffer,
-	// 			(unsigned char *) blockP,
-	// 			MIC_BLOCK_SIZE);
-	return ret;//tbd
+	/* automatic start */
+	micStart();
+
+	return MIC_STATUS_SUCCESS;
 }
 
+
+/* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
+   Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
+int micBlockFilter(int16_t input[], int16_t output[], int num)
+#if 0
+{
+	int i;
+	#define NZEROS 2
+	#define NPOLES 2
+	#define GAIN   1.011169123e+00
+
+	static int32_t xv[NZEROS+1], yv[NPOLES+1];
+
+	for (i = 0; i < num; i++)
+	{ xv[0] = xv[1]; xv[1] = xv[2]; 
+		xv[2] = input[i];
+		yv[0] = yv[1]; yv[1] = yv[2]; 
+		yv[2] =   1000*(xv[0] + xv[2]) - 2000 * xv[1]
+					+ ( -978 * yv[0]) + (  1978 * yv[1]);
+		output[i] = yv[2] / 100;
+	}
+
+	return MIC_STATUS_SUCCESS;
+}
+#else
+{
+	int i;
+	for (i = 0; i < num; i++)
+	{
+		output[i] = ((input[i] - 2048) << 7);
+	}
+	return MIC_STATUS_SUCCESS;
+}
+#endif
+
+#if 0
+/* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
+   Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
+
+#define NZEROS 2
+#define NPOLES 2
+#define GAIN   1.011169123e+00
+
+static float xv[NZEROS+1], yv[NPOLES+1];
+
+static void filterloop()
+  { for (;;)
+      { xv[0] = xv[1]; xv[1] = xv[2]; 
+        xv[2] = `next input value' / GAIN;
+        yv[0] = yv[1]; yv[1] = yv[2]; 
+        yv[2] =   (xv[0] + xv[2]) - 2 * xv[1]
+                     + ( -0.9780305085 * yv[0]) + (  1.9777864838 * yv[1]);
+        `next output value' = yv[2];
+      }
+  }
+#endif
+
+/** 
+ * Get one audio block
+ * param: none
+ * return: (micDataBlock_t*) -> 
+ *       retrieved audio block reference on valid address,
+ *       0 on block not available
+**/
+micDataBlock_t* micBlockGet(void)
+{
+	void *ret;
+	micDataBlock_t *blockP;
+
+	/* get block reference */
+	blockP = (micDataBlock_t *) dmaBufferGet(
+									&micCb.micBuffer,
+									DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+	/* no data */
+	if (blockP == 0)
+	{
+		return 0;
+	}
+
+	dmaBufferGet(
+		&micCb.micBuffer,
+		DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+	
+	#if(MIC_TEST_1011_TONE == 1)
+	int i;
+	/* 8ksps, 1011Hz, 8sp one cycle, max amp.: 32k */
+	static const uint16_t micTestData[] = 
+	{
+		0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
+	};
+	for (i = 0; i<160; i++)
+	{
+		blockP->micDataBlock[i] = micTestData[(i * 1 ) % 8];//1k tone
+	}
+	#endif
+
+	return blockP;
+}
+
+/** 
+ * Start audio capturing
+ * param: none
+ * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+**/
 int micStart(void)
 {
 	TIMER0_CTL_R |= (TIMER_CTL_TAOTE | TIMER_CTL_TAEN);
-	return 0;
+	return MIC_STATUS_SUCCESS;
 }
 
+/** 
+ * Stop audio capturing
+ * param: none
+ * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+**/
 int micStop(void)
 {
 	TIMER0_CTL_R &= ~(TIMER_CTL_TAOTE | TIMER_CTL_TAEN);
-	return 0;
+	return MIC_STATUS_SUCCESS;
 }
-
