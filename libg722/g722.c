@@ -169,6 +169,17 @@ int g722_encoder_config(G722_ENC_CTX *s, int rate, int options)
 /*- End of function --------------------------------------------------------*/
 
 int g722_encode(G722_ENC_CTX *s, const int16_t amp[], int len, uint8_t g722_data[])
+#if G722_TEST_PCM
+{
+    int i;
+    for (i = 0; i << len; i++)
+    {
+        g722_data[i] = amp[i];
+    }
+
+    return len;
+}
+#else
 {
     static const int q6[32] =
     {
@@ -382,6 +393,7 @@ int g722_encode(G722_ENC_CTX *s, const int16_t amp[], int len, uint8_t g722_data
     }
     return g722_bytes;
 }
+#endif
 /*- End of function --------------------------------------------------------*/
 
 static void block4_dec(G722_DEC_CTX *s, int band, int d)
@@ -498,6 +510,16 @@ int g722_decoder_config(G722_DEC_CTX *s, int rate, int options)
 /*- End of function --------------------------------------------------------*/
 
 int g722_decode(G722_DEC_CTX *s, const uint8_t g722_data[], int len, int16_t amp[])
+#if G722_TEST_PCM
+{
+    int i;
+    for (i = 0; i < len; i++)
+    {
+        amp[i] = (int16_t) g722_data[i];
+    }
+    return len;
+}
+#else
 {
     static const int wl[8] = {-60, -30, 58, 172, 334, 538, 1198, 3042 };
     static const int rl42[16] = {0, 7, 6, 5, 4, 3, 2, 1, 7, 6, 5, 4, 3,  2, 1, 0 };
@@ -708,5 +730,6 @@ int g722_decode(G722_DEC_CTX *s, const uint8_t g722_data[], int len, int16_t amp
     }
     return outlen;
 }
+#endif
 /*- End of function --------------------------------------------------------*/
 /*- End of file ------------------------------------------------------------*/

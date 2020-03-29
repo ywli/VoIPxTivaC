@@ -40,6 +40,8 @@ codec is considerably faster, and still fully compatible with wideband terminals
 ???.
 */
 
+#define G722_TEST_PCM 1
+
 enum
 {
     G722_SAMPLE_RATE_8000 = 0x0001,
