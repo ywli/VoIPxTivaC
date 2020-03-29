@@ -2,6 +2,7 @@
 #include "ez_rtp.h"
 #include "g722.h"
 #include <stdint.h>
+#include "rtp.h"
 
 typedef struct
 {
@@ -11,7 +12,7 @@ typedef struct
 
 rtpControlBlock_t rtpCb;
 
-int rtp_init(void)
+int rtpInit(void)
 {
 	/* initialize header */
 	rtpCb.rtpTxHdr.bitfields = 0;//tbd
@@ -26,10 +27,10 @@ int rtp_init(void)
 			64000,
 			G722_SAMPLE_RATE_8000) != 0)
 	{
-		/* error tbd */
+		return RTP_STATUS_FAILURE;
 	}
 
-	return 0;
+	return RTP_STATUS_SUCCESS;
 }
 
 /** 
@@ -41,7 +42,7 @@ int rtp_init(void)
  * param: sampleLenP (uint16_t*) 	-> number of sample output
  * return: (int)			-> 0 on failure, 1 on success
 **/
-int rtp_write(
+int rtpWrite(
 	uint8_t* packetP,
 	const int16_t *sampleP,
 	uint16_t sampleLen) 
@@ -72,8 +73,7 @@ int rtp_write(
 	*wrP++ = (uint8_t) ((hdrP->ssrc >>  8) & 0xFF);
 	*wrP++ = (uint8_t) ((hdrP->ssrc >>  0) & 0xFF);
 	
-	/* audio samples 320-bytes */
-	#if 0
+	/* audio samples */
 	res = g722_encode(
 			&rtpCb.rtpEncoder,
 			sampleP,
@@ -81,30 +81,9 @@ int rtp_write(
 			wrP);
 	if (res <= 0)
 	{
-		/* error tbd */
-		return -1;
+		return RTP_STATUS_FAILURE;
 	}
 	wrP += res;
-	#else
-	int16_t *dstSampleP;
-	dstSampleP = (int16_t *) wrP;
-	/* 8ksps, 1011Hz, 8sp one cycle, max amp.: 32k */
-	static const uint16_t spkTestData[] = 
-	{
-		0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
-	};
-	for (res = 0; res<sampleLen; res++)
-	{
-		//dstSampleP[res] = spkTestData[(res * 3 ) % 8];//3k tone
-		dstSampleP[res] = spkTestData[(res * 1 ) % 8];//1k tone
-		//dstSampleP[res] = sampleP[res];//true voice
-	}
-	wrP += sampleLen * sizeof(int16_t);
-	// for (res = 0; res < 332; res++)
-	// {
-	// 	packetP[res] = 0;
-	// }
-	#endif
 
 	return (wrP - packetP);
 }

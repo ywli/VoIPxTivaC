@@ -9,9 +9,13 @@
 #define __RTP_H__
 #include <stdint.h>
 
-int rtp_init(void);
 
-int rtp_write(
+#define RTP_STATUS_SUCCESS 1
+#define RTP_STATUS_FAILURE 0
+
+int rtpInit(void);
+
+int rtpWrite(
 	uint8_t* packetP,
 	const int16_t *sampleP,
 	uint16_t sampleLen);
