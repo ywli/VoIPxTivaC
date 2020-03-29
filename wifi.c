@@ -201,6 +201,12 @@ static int wifiTxBackgroundTask(void)
         return WIFI_STATUS_FAILURE;
     }
 
+    /* do not send AT command 2 if there is no packet to send */
+    if ((c == 2) && (wifiCb.wifiTxPktBuffer.numOfAvail == 0))
+    {
+        pktP = 0;
+    }
+
     if (pktP == 0 )
     {
         return WIFI_STATUS_FAILURE;
