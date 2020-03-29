@@ -16,14 +16,6 @@
 #include "rtp.h"
 
 
-typedef struct
-{
-    uint8_t txPktBuffer[512];
-    uint16_t txPktSize;
-}txControlBlock_t;
-
-txControlBlock_t txCb;
-
 void txInit(void)
 {
     /* initialize mic module */
@@ -33,55 +25,56 @@ void txInit(void)
     wifiInit();
 
     /* initialize rtp module */
-    rtp_init();
+    rtpInit();
+}
+
+void txLoop()
+{
+    wifiXferBlock_t *wifiPktP;
+    micDataBlock_t *audioBlockP;
+    
+    /* initialize buffer */
+    wifiPktP = wifiPktSend1();
+    if (wifiPktP == 0)
+    {
+        return;
+    }
+    
+    /* 
+    * read audio block 
+    */
+    audioBlockP = micBlockGet();
+    /* no data */
+    if (audioBlockP == 0)
+    {
+        return;
+    }
+
+    /* 
+    * generate RTP packet 
+    */
+    wifiPktP->wifiPktSize = rtpWrite(
+                wifiPktP->wifiPktP,
+                &audioBlockP->micDataBlock[0],
+                MIC_BLOCK_NUM_OF_SP);
+    if (wifiPktP->wifiPktSize <= 0)
+    {
+        /* error tbd */
+        return;
+    }
+    
+    /* send RTP packet over wifi */
+    wifiPktSend2();
+    
+    return;
 }
 
 /* from microphone to Wifi */
 void txTask(void *pvParameters)
 {
-    int16_t *sampleP;
-    uint16_t sampleLen;
-    uint8_t *pktP;
-    uint16_t pktLen;
-    int res;
-    int cnt = 0;
-    
     for (;;)
     {
-        /* periodically setup wifi */
-        if (((cnt++) % 1000) == 0)
-        {
-            wifiConnect();
-            vTaskDelay(100);
-        }
-
-        /* initialize buffer */
-        pktLen = 0;
-        pktP = &txCb.txPktBuffer[0];
-        
-        /* read block from Mic */
-        sampleP = (int16_t *) micReadBlock();
-
-        /* generate RTP packet */
-        #if 1
-        if ((res = rtp_write(
-                pktP,
-                sampleP,
-                160)) <= 0)
-        {
-            /* error tbd */
-            continue;
-        }
-        pktLen += res;
-        #else
-        pktLen = 332;
-        #endif
-        
-        /* send RTP packet over wifi */
-        wifiPktSend(
-            pktP, 
-            pktLen);
-
+        txLoop();
     }
 }
 
