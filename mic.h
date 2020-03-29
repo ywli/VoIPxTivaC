@@ -15,7 +15,7 @@
 /* use fake 1011 tone data */
 #define MIC_TEST_1011_TONE   0 //1-enable, 0-disable
 
-#define MIC_TEST_FILTER 1
+#define MIC_TEST_FILTER      1
 
 /* microphone sampling rate */
 #define MIC_SAMPLE_RATE_HZ   8000
@@ -31,7 +31,7 @@
 /* size of block in bytes */
 #define MIC_BLOCK_SIZE       (MIC_BLOCK_NUM_OF_SP * sizeof(uint16_t))
 /* number of blocks */
-#define MIC_BLOCK_NUM_OF     60
+#define MIC_BLOCK_NUM_OF     10
 
 typedef struct 
 {
