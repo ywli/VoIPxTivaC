@@ -33,22 +33,6 @@ void micISR(void)
 		&micCb.micBuffer, 
 		DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
 
-	/* filter */
-	#if MIC_TEST_FILTER
-	micDataBlock_t *blockP;
-	int16_t *sampleP;
-	int sampleNum;
-	blockP = (micDataBlock_t *) dmaBufferGet(
-								&micCb.micBuffer,
-								DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
-	sampleP = &blockP->micDataBlock[0];
-	sampleNum = MIC_BLOCK_NUM_OF_SP;
-	micBlockFilter(
-		sampleP, 
-		sampleP, 
-		sampleNum);
-	#endif
-
 	/* reload next block */
 	micDma();
 
@@ -257,7 +241,10 @@ int micInit(void)
 
 /* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
    Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
-int micBlockFilter(int16_t input[], int16_t output[], int num)
+int micBlockFilter(
+	int16_t input[], 
+	int16_t output[], 
+	int num)
 #if 0
 {
 	int i;
@@ -280,10 +267,18 @@ int micBlockFilter(int16_t input[], int16_t output[], int num)
 }
 #else
 {
+	
 	int i;
 	for (i = 0; i < num; i++)
 	{
-		output[i] = ((input[i] - 2048) << 7);
+		//output[i] = ((input[i] - 2048) << 7);
+		
+
+		#if MIC_TEST_1011_TONE
+		output[i] = ((input[i] >> 8) & 0xff);
+		#else
+		output[i] = ((input[i] - 2048));
+		#endif
 	}
 	return MIC_STATUS_SUCCESS;
 }

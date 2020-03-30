@@ -172,9 +172,9 @@ int g722_encode(G722_ENC_CTX *s, const int16_t amp[], int len, uint8_t g722_data
 #if G722_TEST_PCM
 {
     int i;
-    for (i = 0; i << len; i++)
+    for (i = 0; i < len; i++)
     {
-        g722_data[i] = amp[i];
+        g722_data[i] = (uint8_t)((amp[i] >> 0) & 0xff);
     }
 
     return len;

@@ -192,8 +192,8 @@ dmaBufferGet(
 	{
 		/* case 4: confirm unit DMA transfer */
 		buff->start = (start + 1) % numOfTotal;
-		buff->numOfFree++;
 		buff->numOfXfer--;
+		buff->numOfFree++;
 		return 0;
 	}
 	else

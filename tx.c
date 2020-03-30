@@ -28,18 +28,16 @@ void txInit(void)
     rtpInit();
 }
 
+int micBlockFilter(
+	int16_t input[], 
+	int16_t output[], 
+	int num);
+
 void txLoop()
 {
     wifiXferBlock_t *wifiPktP;
     micDataBlock_t *audioBlockP;
-    
-    /* initialize buffer */
-    wifiPktP = wifiPktSend1();
-    if (wifiPktP == 0)
-    {
-        return;
-    }
-    
+
     /* 
     * read audio block 
     */
@@ -49,6 +47,21 @@ void txLoop()
     {
         return;
     }
+
+    /* apply filter */
+    micBlockFilter(
+        &audioBlockP->micDataBlock[0],
+        &audioBlockP->micDataBlock[0],
+        MIC_BLOCK_NUM_OF_SP);
+
+    /* initialize buffer */
+    wifiPktP = wifiPktSend1();
+    if (wifiPktP == 0)
+    {
+        return;
+    }
+    /* send RTP packet over wifi */
+    wifiPktSend2();
 
     /* 
     * generate RTP packet 
@@ -62,9 +75,6 @@ void txLoop()
         /* error tbd */
         return;
     }
-    
-    /* send RTP packet over wifi */
-    wifiPktSend2();
     
     return;
 }

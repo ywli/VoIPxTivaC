@@ -22,6 +22,7 @@
 #include "ui.h"
 #include "spk.h"
 #include "tx.h"
+#include "wifi.h"
 
 // TI library
 #include "tm4c123gh6pm.h"
@@ -42,13 +43,41 @@ void demoLEDTask(void *pvParameters)
     }
 }
 
+extern int wifiTxBackgroundTask2(int);
+int i = 0;
 /* hardware background task */
 void hwTask(void *pvParameters)
 {
     for (;;)
     {
-        wifiBackgroundTask();
-        vTaskDelay(4);
+        if ((i%1000) == 0)
+        {
+            wifiTxBackgroundTask2(0);
+            vTaskDelay(10);
+        }
+        else if ((i%1000) == 1)
+        {
+            wifiTxBackgroundTask2(1);
+            vTaskDelay(10);
+        }
+        i++;
+
+
+        if (wifiTxBackgroundTask2(2) == WIFI_STATUS_SUCCESS)
+        {
+            vTaskDelay(2);
+        }
+        else
+        {
+            continue;
+        }
+        
+        if (wifiTxBackgroundTask2(3) == WIFI_STATUS_SUCCESS)
+        {
+            vTaskDelay(16);//it will be busy lower than that 
+        }
+
+        
     }
 }
 

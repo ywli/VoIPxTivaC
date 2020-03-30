@@ -40,6 +40,57 @@ uint8_t wifiAtTest0[] = "AT+CIPMUX=1\r\n";
 uint8_t wifiAtTest1[] = "AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n";
 uint8_t wifiAtTest2[] = "AT+CIPSEND=4,172\r\n";
 
+static void wifiDmaInit(void)
+{
+    uint8_t dmaChId;
+
+    /* 
+	 * set a DMA channel for receive 
+	 */
+
+	/* channel attribute */
+	dmaChId = WIFI_DMA_CH_RX;
+
+	/* configure channel assignment, CH18, enc 2 = UART4RX */
+	UDMA_CHMAP2_R &= ~UDMA_CHMAP2_CH18SEL_M;
+	UDMA_CHMAP2_R |= ((2 << UDMA_CHMAP2_CH18SEL_S) & UDMA_CHMAP2_CH18SEL_M);
+
+	/* 1- default channel priority level, omitted */
+
+	/* 2- use primary control structure, omitted */
+
+	/* 3- respond to both single and burst requests, omitted */
+	
+	/* 4- clear mask */
+	UDMA_REQMASKCLR_R |= (1 << dmaChId);
+
+	/* channel control structure */
+    wifiRxDma();
+
+
+    /* 
+	 * set a DMA channel for transmit 
+	 */
+
+	/* channel attribut */
+	dmaChId = WIFI_DMA_CH_TX;
+
+	/* configure channel assignment, CH19, enc 2 = UART4TX */
+	UDMA_CHMAP2_R &= ~UDMA_CHMAP2_CH19SEL_M;
+	UDMA_CHMAP2_R |= ((2 << UDMA_CHMAP2_CH19SEL_S) & UDMA_CHMAP2_CH19SEL_M);
+
+	/* 1- default channel priority level, omitted */
+
+	/* 2- use primary control structure, omitted */
+
+	/* 3- respond to both single and burst requests, omitted */
+	
+	/* 4- clear mask */
+	UDMA_REQMASKCLR_R |= (1 << dmaChId);
+
+    return;
+}
+
 static void wifiRxDma(void)
 {
     uint8_t dmaChId;
@@ -134,6 +185,14 @@ static void wifiTxPktInit(void)
 
     wifiTxPkt[3].wifiPktP = &wifiPkt3[0];
     wifiTxPkt[3].wifiPktSize = sizeof(wifiPkt3);
+
+    #if 0
+    int i;
+    for (i = 0; i < wifiTxPkt[0].wifiPktSize; i++)
+    {
+        wifiTxPkt[0].wifiPktP[i] = 'a';
+    }
+    #endif
 }
 
 static void wifiAtInit(void)
@@ -151,63 +210,53 @@ static void wifiAtInit(void)
     wifiAt[2].wifiPktSize = 18;
 }
 
-static int wifiTxBackgroundTask(void)
+int wifiTxBackgroundTask(void)
 {
     static int i = 0;
-    int c;
-    wifiXferBlock_t *pktP;
+    wifiXferBlock_t *pktP = (wifiXferBlock_t *) 0;
+
+    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) != 0)
+    {
+        return WIFI_STATUS_FAILURE;
+    }
 
     /* determine c */
     if ((i % 1000) == 0)
     {
         /* AT command 0 */
-        c = 0;
+        pktP = &wifiAt[0];
     }
     else if((i % 1000) == 1)
     {
         /* AT command 1 */
-        c = 1;
+        pktP = &wifiAt[1];
     }
-    else if ((i % 2) == 0)
+    else// if (wifiCb.wifiTxPktBuffer.numOfAvail > 0)
     {
-        /* AT command 2 */
-        c = 2;
-    }
-    else if ((i % 2) == 1)
-    {
-        /* packet */
-        c = 3;
-    }
-    i++;
+        if ((i % 2) == 0)
+        {
+            /* AT command 2 */
+            pktP = &wifiAt[2];
+        }
+        else if ((i % 2) == 1)
+        {
+            /* packet */
+            pktP = (wifiXferBlock_t *) dmaBufferGet(
+                        &wifiCb.wifiTxPktBuffer, 
+                        DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
 
-    /* determine transfer block */
-    if ((c >= 0) && (c <= 2))
-    {
-        /* AT command */
-        pktP = &wifiAt[c];
+            if (pktP != 0)
+            {
+                dmaBufferGet(
+                    &wifiCb.wifiTxPktBuffer, 
+                    DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+            }
+            pktP = &wifiTxPkt[0];
+        }
     }
-    else if (c == 3)
-    {
-        /* TX packet */
-        pktP = (wifiXferBlock_t *) dmaBufferGet(
-                            &wifiCb.wifiTxPktBuffer, 
-                            DMA_BUFFER_GET_OPT_DRV_GET_UNIT_1);
-        dmaBufferGet(
-            &wifiCb.wifiTxPktBuffer, 
-            DMA_BUFFER_GET_OPT_DRV_GET_UNIT_2);
-    }
-    else
-    {
-        return WIFI_STATUS_FAILURE;
-    }
+    
 
-    /* do not send AT command 2 if there is no packet to send */
-    if ((c == 2) && (wifiCb.wifiTxPktBuffer.numOfAvail == 0))
-    {
-        pktP = 0;
-    }
-
-    if (pktP == 0 )
+    if (pktP == 0)
     {
         return WIFI_STATUS_FAILURE;
     }
@@ -217,58 +266,64 @@ static int wifiTxBackgroundTask(void)
         pktP->wifiPktP, 
         pktP->wifiPktSize);
 
+    i++;
     return WIFI_STATUS_SUCCESS;
 }
 
-static void wifiDmaInit(void)
+int wifiTest = 0;
+int wifiTxBackgroundTask2(int c)
 {
-    uint8_t dmaChId;
+    wifiXferBlock_t *pktP = (wifiXferBlock_t *) 0;
 
-    /* 
-	 * set a DMA channel for receive 
-	 */
+    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) != 0)
+    {
+        return WIFI_STATUS_FAILURE;
+    }
 
-	/* channel attribute */
-	dmaChId = WIFI_DMA_CH_RX;
+    /* determine c */
+    if ((c == 0) || (c == 1))
+    {
+        /* AT command 0 and 1 */
+        pktP = &wifiAt[c];
+    }
+    else if (wifiCb.wifiTxPktBuffer.numOfAvail > 0)
+    {
+        if (c == 2)
+        {
+            pktP = &wifiAt[2];
+        }
+        else
+        {
+            /* packet */
+            pktP = (wifiXferBlock_t *) dmaBufferGet(
+                        &wifiCb.wifiTxPktBuffer, 
+                        DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
 
-	/* configure channel assignment, CH18, enc 2 = UART4RX */
-	UDMA_CHMAP2_R &= ~UDMA_CHMAP2_CH18SEL_M;
-	UDMA_CHMAP2_R |= ((2 << UDMA_CHMAP2_CH18SEL_S) & UDMA_CHMAP2_CH18SEL_M);
+            if (pktP != 0)
+            {
+                dmaBufferGet(
+                    &wifiCb.wifiTxPktBuffer, 
+                    DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+            }
+        }
+    }
+    else
+    {
+        return WIFI_STATUS_FAILURE;
+    }
 
-	/* 1- default channel priority level, omitted */
+    if (pktP == 0)
+    {
+        wifiTest++;
+        return WIFI_STATUS_FAILURE;
+    }
 
-	/* 2- use primary control structure, omitted */
+    /* perform DMA transfer */
+    wifiTxDma(
+        pktP->wifiPktP, 
+        pktP->wifiPktSize);
 
-	/* 3- respond to both single and burst requests, omitted */
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
-
-	/* channel control structure */
-    wifiRxDma();
-
-
-    /* 
-	 * set a DMA channel for transmit 
-	 */
-
-	/* channel attribut */
-	dmaChId = WIFI_DMA_CH_TX;
-
-	/* configure channel assignment, CH19, enc 2 = UART4TX */
-	UDMA_CHMAP2_R &= ~UDMA_CHMAP2_CH19SEL_M;
-	UDMA_CHMAP2_R |= ((2 << UDMA_CHMAP2_CH19SEL_S) & UDMA_CHMAP2_CH19SEL_M);
-
-	/* 1- default channel priority level, omitted */
-
-	/* 2- use primary control structure, omitted */
-
-	/* 3- respond to both single and burst requests, omitted */
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
-
-    return;
+    return WIFI_STATUS_SUCCESS;
 }
 
 static void wifiUartInit(void)
@@ -310,7 +365,7 @@ void wifiBackgroundTask(void)
     /* TX */
     if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) == 0)
     {
-        wifiTxBackgroundTask();
+        //wifiTxBackgroundTask();
     }
     
     /* RX */
