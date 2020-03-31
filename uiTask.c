@@ -17,7 +17,7 @@
 #include "ui.h"
 
 // Flash the LEDs on the launchpad
-void demoLEDTask(void *pvParameters)
+void uiTask(void *pvParameters)
 {
     for (;;)
     {

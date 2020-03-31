@@ -31,13 +31,13 @@ int main(void)
     /* initialize */
 	mainInit();
 
-    xTaskCreate(demoLEDTask, (const portCHAR *)"LEDs",
+    xTaskCreate(uiTask, (const portCHAR *)"UI",
                 configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-    xTaskCreate(txTask, (const portCHAR *)"Tx",
+    xTaskCreate(txTask, (const portCHAR *)"TX",
                 configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-    xTaskCreate(hwTask, (const portCHAR *)"HWBG",
+    xTaskCreate(hwTask, (const portCHAR *)"HW",
                 configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     vTaskStartScheduler();
