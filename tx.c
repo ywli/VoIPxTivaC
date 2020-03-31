@@ -52,9 +52,7 @@ void txLoop()
     {
         return;
     }
-    /* send RTP packet over wifi */
-    wifiPktSend2();
-
+    
     /* 
     * generate RTP packet 
     */
@@ -68,6 +66,8 @@ void txLoop()
         return;
     }
     
+    /* send RTP packet over wifi */
+    wifiPktSend2();
     return;
 }
 

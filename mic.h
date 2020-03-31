@@ -4,7 +4,6 @@
 //
 //
 //*****************************************************************************
-
 #ifndef __MIC_H__
 #define __MIC_H__
 #include <stdint.h>
@@ -43,7 +42,7 @@
 #define MIC_DMA_DIR           DMA_DIR_IO_TO_RAM
 #define MIC_DMA_ELEMENT_SIZE  2
 
-
+/* audio block definition */
 typedef struct 
 {
 	int16_t micDataBlock[MIC_BLOCK_NUM_OF_SP];

@@ -11,8 +11,9 @@
 #include "dma.h"
 #include "wifi.h"
 
-#define WIFI_BUFFER_SIZE        1024
-#define WIFI_TRANSPORT_SIZE     64
+#define WIFI_RX_BLOCK_SIZE      32
+#define WIFI_RX_BLOCK_NUM_OF    5
+
 #define WIFI_DMA_CH_RX          18
 #define WIFI_DMA_CH_TX          19
 #define WIFI_PKT_NUM_OF         4
@@ -20,13 +21,13 @@
 
 struct wifiControlBlock
 {
-    cbuff_dma_t wifiRxBuffer;
+    dmaBuffer_t wifiRxBuffer;
     dmaBuffer_t wifiTxPktBuffer;
 };
 struct wifiControlBlock wifiCb;
 
 /* buffer */
-uint8_t wifiRxArray[WIFI_BUFFER_SIZE];
+uint8_t wifiRxArray[WIFI_RX_BLOCK_SIZE * WIFI_RX_BLOCK_NUM_OF];
 
 /* TX packet */
 wifiXferBlock_t wifiTxPkt[WIFI_PKT_NUM_OF];
@@ -34,6 +35,12 @@ uint8_t wifiPkt0[WIFI_PKT_SIZE];
 uint8_t wifiPkt1[WIFI_PKT_SIZE];
 uint8_t wifiPkt2[WIFI_PKT_SIZE];
 uint8_t wifiPkt3[WIFI_PKT_SIZE];
+
+/* TX test packet */
+#if WIFI_TEST_CANNED_TX_PKT
+wifiXferBlock_t wifiTxTestPkt[1];
+uint8_t wifiTxTestPkt0[WIFI_PKT_SIZE];
+#endif 
 
 /* AT command */
 wifiXferBlock_t wifiAt[3];
@@ -47,10 +54,18 @@ static void wifiDmaRxRequest(void)
     int32_t len;
 
     /* prepare space in DMA buffer */
-    cbuff_dma_enqueue_driver1(
-        &wifiCb.wifiRxBuffer, 
-        &addr, 
-        &len);
+    addr = (uint8_t *) dmaBufferPut(
+        &wifiCb.wifiRxBuffer,
+        DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
+    dmaBufferPut(
+        &wifiCb.wifiRxBuffer,
+        DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
+    len = WIFI_RX_BLOCK_SIZE;
+    
+    if (addr == 0)
+    {
+        //tbd: error
+    }
 
     dmaChRequest(
         WIFI_DMA_RX_CH,
@@ -122,12 +137,14 @@ static void wifiTxPktInit(void)
     wifiTxPkt[3].wifiPktP = &wifiPkt3[0];
     wifiTxPkt[3].wifiPktSize = sizeof(wifiPkt3);
 
-    #if 0
+    #if WIFI_TEST_CANNED_TX_PKT
     int i;
-    for (i = 0; i < wifiTxPkt[0].wifiPktSize; i++)
+    for (i = 0; i < sizeof(wifiTxTestPkt0); i++)
     {
-        wifiTxPkt[0].wifiPktP[i] = 'a';
+        wifiTxTestPkt0[i] = '0' + (i %10);
     }
+    wifiTxTestPkt[0].wifiPktP = &wifiTxTestPkt0[0];
+    wifiTxTestPkt[0].wifiPktSize = sizeof(wifiTxTestPkt0);
     #endif
 }
 
@@ -173,14 +190,18 @@ static void wifiUartInit(void)
 
     // NVIC_EN1_R |= (1<<28);
 
-
     /* 7- enable UART */
     UART4_CTL_R = UART_CTL_UARTEN|
                   UART_CTL_RXE|
                   UART_CTL_TXE;
 }
 
-int wifiTest = 0;
+int wifiRxBackgroundTask(void)
+{
+    //tbd
+    wifiDmaRxRequest();
+}
+
 int wifiTxBackgroundTask2(int c)
 {
     wifiXferBlock_t *pktP = (wifiXferBlock_t *) 0;
@@ -215,6 +236,9 @@ int wifiTxBackgroundTask2(int c)
                     &wifiCb.wifiTxPktBuffer, 
                     DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
             }
+            #if WIFI_TEST_CANNED_TX_PKT
+            pktP = &wifiTxTestPkt[0];
+            #endif
         }
     }
     else
@@ -224,7 +248,6 @@ int wifiTxBackgroundTask2(int c)
 
     if (pktP == 0)
     {
-        wifiTest++;
         return WIFI_STATUS_FAILURE;
     }
 
@@ -232,6 +255,8 @@ int wifiTxBackgroundTask2(int c)
     wifiDmaTxRequest(
         pktP->wifiPktP, 
         pktP->wifiPktSize);
+
+    //wifiDmaRxRequest();
 
     return WIFI_STATUS_SUCCESS;
 }
@@ -244,11 +269,11 @@ int wifiTxBackgroundTask2(int c)
 int wifiInit(void)
 {
     /* initialize control block */
-    cbuff_dma_init(
-        &wifiCb.wifiRxBuffer,
-        &wifiRxArray[0],
-        WIFI_BUFFER_SIZE,
-        WIFI_TRANSPORT_SIZE);
+    dmaBufferInit(
+        &wifiCb.wifiRxBuffer, 
+        &wifiRxArray[0], 
+        sizeof(wifiRxArray), 
+        WIFI_RX_BLOCK_SIZE);
 
     /* initialize Tx packet buffer */
     wifiTxPktInit();
@@ -275,10 +300,14 @@ int wifiRead(
     uint8_t *dataP,
     uint16_t dataLen)
 {
-    return cbuff_dma_dequeue_app(
-                &wifiCb.wifiRxBuffer, 
-                dataP, 
-                dataLen);
+    //tbd 
+    // dmaBufferGet(
+    //     &wifiCb.wifiRxBuffer,
+    //     DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+
+    // dmaBufferGet(
+    //     &wifiCb.wifiRxBuffer,
+    //     DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
 }
 
 /** 

@@ -9,6 +9,7 @@
 #define __WIFI_H__
 #include <stdint.h>
 
+#define WIFI_TEST_CANNED_TX_PKT 0
 #define WIFI_STATUS_SUCCESS 1
 #define WIFI_STATUS_FAILURE 0
 
@@ -17,7 +18,7 @@
  */
 #define WIFI_DMA_RX_CH            18
 #define WIFI_DMA_RX_ENC           2
-#define WIFI_DMA_RX_MODE          DMA_MODE_PINGPONG
+#define WIFI_DMA_RX_MODE          DMA_MODE_BASIC
 #define WIFI_DMA_RX_DIR           DMA_DIR_IO_TO_RAM
 #define WIFI_DMA_RX_ELEMENT_SIZE  1
 
