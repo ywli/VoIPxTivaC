@@ -9,7 +9,7 @@
 #include "dma.h"
 #include "abm.h"
 
-#define DMA_NUM_OF_ELEMENT 1023
+#define DMA_NUM_OF_ELEMENT_MAX 1023
 
 struct dmaTableEntry
 {
@@ -81,8 +81,8 @@ int dmaChInit(
 	
 	/* configure channel assignment */
     regAddr = &UDMA_CHMAP0_R + (dmaChId / 8);
-    shift = (dmaChId % 8) * 4;
-    mask = 0xff << shift;
+    shift = (dmaChId % 8) * UDMA_CHMAP0_CH1SEL_S;
+    mask = UDMA_CHMAP0_CH0SEL_M << shift;
     *regAddr &= ~mask;
     *regAddr |=  (dmaChEnc << shift) & mask;
 
@@ -146,7 +146,7 @@ int dmaChInit(
     ctlReg |= UDMA_CHCTL_ARBSIZE_1;//tbd
 
     /* next burst */
-    ctlReg |= UDMA_CHCTL_NXTUSEBURST;//tbd
+    //ctlReg |= UDMA_CHCTL_NXTUSEBURST;//tbd
 
     /* DMA mode */
     if (dmaMode == DMA_MODE_PINGPONG)
@@ -192,40 +192,26 @@ int dmaChRequest(
     uint32_t *dstAddr,
     uint32_t numOfElement)
 {
-    uint32_t offset;
-    uint32_t ctlReg;
-    uint32_t u32tmp;
     uint32_t bitMask;
+    uint32_t ctlReg;
+    uint32_t offset;
+    uint32_t u32tmp;
+    int isPingPong;
+    int isEnable;
 
+    /* bit mask */
     bitMask = (1 << dmaChId);
+    /* control word */
+    ctlReg = dmaTable[dmaChId].reserved;
+    isPingPong = ((ctlReg & UDMA_CHCTL_XFERMODE_M) == UDMA_CHCTL_XFERMODE_PINGPONG);
 
-    /* primary entry */
-    ctlReg = dmaTable[dmaChId].chCtl;
-
-    /* read remain transfer size */
-    u32tmp = ((ctlReg & UDMA_CHCTL_XFERSIZE_M) >> UDMA_CHCTL_XFERSIZE_S);
-
-    /* primary/alternative switching in ping-pong mode hanlding */
-    if ((dmaTable[dmaChId].reserved & UDMA_CHCTL_XFERMODE_M) 
-            == UDMA_CHCTL_XFERMODE_PINGPONG)
-    {
-        /* if primary entry is still busy, assume alternative entry is idle */
-        if (u32tmp != 0)
-        {
-            /* alternative */
-            dmaChId += 32;
-            ctlReg = dmaTable[dmaChId].chCtl;
-            u32tmp = ((ctlReg & UDMA_CHCTL_XFERSIZE_M) >> UDMA_CHCTL_XFERSIZE_S);
-        }
-    }
-
-    /* if DMA still running */
-    if (UDMA_ENASET_R & bitMask)
+    /* if DMA still running in basic mode */
+    if ((!isPingPong) && (UDMA_ENASET_R & bitMask))
     {
         return COMMON_RETURN_STATUS_FAILURE;
     }
     
-    if (numOfElement > DMA_NUM_OF_ELEMENT)
+    if (numOfElement > DMA_NUM_OF_ELEMENT_MAX)
     {
         return COMMON_RETURN_STATUS_FAILURE;
     }
@@ -274,17 +260,43 @@ int dmaChRequest(
     /* 
      * DMA channel control description 
      */
+    
+    isEnable = (1==1);
+    if (isPingPong)
+    {
+        if (UDMA_ALTSET_R & bitMask)
+        {
+            /* set subsequent alternative entry */
+            isEnable = (1==1); // enable
+            dmaChId += 32;
+        }
+        else if (dmaTable[dmaChId].srcAddr == 0)
+        {
+            /* set first primary entry */
+            isEnable = (1==0); // do not enable 
+        }
+        else if (dmaTable[dmaChId+32].srcAddr == 0)
+        {
+            /* set first alternative entry */
+            isEnable = (1==1); // enable
+            dmaChId += 32;
+        }
+    }
+
     dmaTable[dmaChId].srcAddr = srcAddr;
     dmaTable[dmaChId].dstAddr = dstAddr;
     dmaTable[dmaChId].chCtl = dmaTable[dmaChId].reserved;
     dmaTable[dmaChId].chCtl &= ~UDMA_CHCTL_XFERSIZE_M;
     dmaTable[dmaChId].chCtl |= (((numOfElement - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M);
 
-    /* clear DMA status bit  tbd */
+    /* clear DMA status bit  */
     UDMA_CHIS_R |= bitMask;
 
 	/* enable uDMA channel */
-	UDMA_ENASET_R |= bitMask;
+    if (isEnable)
+    {
+        UDMA_ENASET_R |= bitMask;
+    }
 
     return COMMON_RETURN_STATUS_SUCCESS;
 }
