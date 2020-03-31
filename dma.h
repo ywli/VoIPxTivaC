@@ -4,17 +4,16 @@
 //
 //
 //*****************************************************************************
-
 #ifndef __DMA_H__
 #define __DMA_H__
 
+/* DMA channel direction */
 #define DMA_DIR_IO_TO_RAM 1
 #define DMA_DIR_RAM_TO_IO 0
 
-
+/* DMA channel mode */
 #define DMA_MODE_BASIC    0
 #define DMA_MODE_PINGPONG 1
-
 
 /** 
  * Initialize DMA

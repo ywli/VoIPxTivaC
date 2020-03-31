@@ -6,9 +6,10 @@
 
 /* project resource */
 #include "common.h"
-#include "dma.h"
 #include "abm.h"
+#include "dma.h"
 
+/* module private definition */
 #define DMA_NUM_OF_ELEMENT_MAX 1023
 
 struct dmaTableEntry
@@ -63,7 +64,7 @@ int dmaInit(void)
  *                     DMA_DIR_RAM_TO_IO- from RAM to IO
  * param: elementSize -> DMA transfer size, 
  *                       1- 8-bit, 2- 16-bit, 4- 32-bit
- * return: execution status
+ * return: (int) -> execution status
 **/
 int dmaChInit(
     int dmaChId,
@@ -87,13 +88,13 @@ int dmaChInit(
     *regAddr |=  (dmaChEnc << shift) & mask;
 
 	/* 1- default channel priority level */
-	//UDMA_PRIOSET_R = 0x00000000;//tbd
+	UDMA_PRIOSET_R |= 0x00000000;
 
 	/* 2- use primary control structure */
-	//UDMA_ALTSET_R = 0x00000000;//tbd
+	UDMA_ALTSET_R |= 0x00000000;
 
 	/* 3- respond to both single and burst requests */
-	//UDMA_USEBURSTCLR_R = 0x00000000;//tbd
+	UDMA_USEBURSTCLR_R |= 0x00000000;
 	
 	/* 4- clear mask */
 	UDMA_REQMASKCLR_R |= (1 << dmaChId);
@@ -143,10 +144,10 @@ int dmaChInit(
     }
 
     /* arb size */
-    ctlReg |= UDMA_CHCTL_ARBSIZE_1;//tbd
+    ctlReg |= UDMA_CHCTL_ARBSIZE_1;//revise
 
     /* next burst */
-    //ctlReg |= UDMA_CHCTL_NXTUSEBURST;//tbd
+    //ctlReg |= UDMA_CHCTL_NXTUSEBURST;//revise
 
     /* DMA mode */
     if (dmaMode == DMA_MODE_PINGPONG)
@@ -204,6 +205,7 @@ int dmaChRequest(
     /* control word */
     ctlReg = dmaTable[dmaChId].reserved;
     isPingPong = ((ctlReg & UDMA_CHCTL_XFERMODE_M) == UDMA_CHCTL_XFERMODE_PINGPONG);
+    isEnable = (1==1);//by default enable channel 
 
     /* if DMA still running in basic mode */
     if ((!isPingPong) && (UDMA_ENASET_R & bitMask))
@@ -211,6 +213,7 @@ int dmaChRequest(
         return COMMON_RETURN_STATUS_FAILURE;
     }
     
+    /* transfer size over limit */
     if (numOfElement > DMA_NUM_OF_ELEMENT_MAX)
     {
         return COMMON_RETURN_STATUS_FAILURE;
@@ -256,12 +259,8 @@ int dmaChRequest(
     {
         abmAbort();
     }
-
-    /* 
-     * DMA channel control description 
-     */
     
-    isEnable = (1==1);
+    /* ping pong mode special handling */
     if (isPingPong)
     {
         if (UDMA_ALTSET_R & bitMask)
@@ -282,7 +281,8 @@ int dmaChRequest(
             dmaChId += 32;
         }
     }
-
+ 
+    /* DMA channel control description */
     dmaTable[dmaChId].srcAddr = srcAddr;
     dmaTable[dmaChId].dstAddr = dstAddr;
     dmaTable[dmaChId].chCtl = dmaTable[dmaChId].reserved;
