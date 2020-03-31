@@ -15,6 +15,9 @@
 /* use fake 1011 tone data */
 #define MIC_TEST_1011_TONE   0 //1-enable, 0-disable
 
+/* DC blocking filter */
+#define MIC_DC_BLOCK_FILTER  1  //1-IIR, 2-subtract DC
+
 /* microphone sampling rate */
 #define MIC_SAMPLE_RATE_HZ   8000
 

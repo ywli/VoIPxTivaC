@@ -200,11 +200,11 @@ int micInit(void)
 
 /* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
    Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
-int micBlockFilter(
+int micDcBlockFilter(
 	int16_t input[], 
 	int16_t output[], 
 	int num)
-#if 0
+#if MIC_DC_BLOCK_FILTER
 {
 	int i;
 	#define NZEROS 2
@@ -217,24 +217,19 @@ int micBlockFilter(
 	{ xv[0] = xv[1]; xv[1] = xv[2]; 
 		xv[2] = input[i];
 		yv[0] = yv[1]; yv[1] = yv[2]; 
-		yv[2] =   1000*(xv[0] + xv[2]) - 2000 * xv[1]
-					+ ( -978 * yv[0]) + (  1978 * yv[1]);
-		output[i] = yv[2] / 100;
+		yv[2] =   (1000*(xv[0] + xv[2]) - 2000 * xv[1]
+					+ ( -978 * yv[0]) + (  1978 * yv[1]))/1000;
+		output[i] = yv[2];
 	}
 
 	return MIC_STATUS_SUCCESS;
 }
 #else
 {
-	
 	int i;
 	for (i = 0; i < num; i++)
 	{	
-		#if MIC_TEST_1011_TONE
-		output[i] = ((input[i] >> 8) & 0xff);
-		#else
 		output[i] = ((input[i] - 2048));
-		#endif
 	}
 	return MIC_STATUS_SUCCESS;
 }
@@ -299,6 +294,11 @@ micDataBlock_t* micBlockGet(void)
 	{
 		blockP->micDataBlock[i] = micTestData[(i * 1 ) % 8];//1k tone
 	}
+	#else
+	micDcBlockFilter(
+        &blockP->micDataBlock[0],
+        &blockP->micDataBlock[0],
+        MIC_BLOCK_NUM_OF_SP);
 	#endif
 
 	return blockP;
