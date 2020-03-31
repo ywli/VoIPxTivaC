@@ -20,6 +20,7 @@
 #define WIFI_DMA_RX_MODE          DMA_MODE_PINGPONG
 #define WIFI_DMA_RX_DIR           DMA_DIR_IO_TO_RAM
 #define WIFI_DMA_RX_ELEMENT_SIZE  1
+
 #define WIFI_DMA_TX_CH            19
 #define WIFI_DMA_TX_ENC           2
 #define WIFI_DMA_TX_MODE          DMA_MODE_BASIC

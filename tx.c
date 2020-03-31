@@ -28,11 +28,6 @@ void txInit(void)
     rtpInit();
 }
 
-int micBlockFilter(
-	int16_t input[], 
-	int16_t output[], 
-	int num);
-
 void txLoop()
 {
     wifiXferBlock_t *wifiPktP;
@@ -49,10 +44,7 @@ void txLoop()
     }
 
     /* apply filter */
-    micBlockFilter(
-        &audioBlockP->micDataBlock[0],
-        &audioBlockP->micDataBlock[0],
-        MIC_BLOCK_NUM_OF_SP);
+    
 
     /* initialize buffer */
     wifiPktP = wifiPktSend1();
