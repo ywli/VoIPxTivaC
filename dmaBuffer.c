@@ -4,6 +4,7 @@
  *
  */
 
+#include "common.h"
 #include "dmaBuffer.h"
 
 /*
@@ -27,7 +28,7 @@ dmaBufferInit(
 	if ((bufSize % unitSize) != 0)
 	{
 		/* error */
-		return DMA_BUFFER_STATUS_FAILURE;
+		return COMMON_RETURN_STATUS_FAILURE;
 	}
 
 	/* initialize buffer */
@@ -37,7 +38,7 @@ dmaBufferInit(
 
 	dmaBufferReset(buff);
 
-	return 1;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /*
@@ -65,7 +66,7 @@ dmaBufferReset(dmaBuffer_t *buff)
 		buff->buff[i] = 0xff;
 	}
 
-	return DMA_BUFFER_STATUS_SUCCESS;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 

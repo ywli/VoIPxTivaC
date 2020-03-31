@@ -11,6 +11,7 @@
 #include "g722.h"
 
 /* project resource */
+#include "common.h"
 #include "rtp.h"
 
 typedef struct
@@ -36,10 +37,10 @@ int rtpInit(void)
 			64000,
 			G722_SAMPLE_RATE_8000) != 0)
 	{
-		return RTP_STATUS_FAILURE;
+		return COMMON_RETURN_STATUS_FAILURE;
 	}
 
-	return RTP_STATUS_SUCCESS;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /** 
@@ -90,7 +91,7 @@ int rtpWrite(
 			wrP);
 	if (res <= 0)
 	{
-		return RTP_STATUS_FAILURE;
+		return COMMON_RETURN_STATUS_FAILURE;
 	}
 	wrP += res;
 

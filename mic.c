@@ -11,6 +11,7 @@
 #include "tm4c123gh6pm.h"
 
 /* project resources */
+#include "common.h"
 #include "sys.h"
 #include "dma.h"
 #include "dmaBuffer.h"
@@ -179,7 +180,7 @@ void micTimerInit(void)
 /** 
  * Initialize module
  * param: none
- * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+ * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
 **/
 int micInit(void)
 {
@@ -202,7 +203,7 @@ int micInit(void)
 	/* automatic start */
 	micStart();
 
-	return MIC_STATUS_SUCCESS;
+	return ;
 }
 
 
@@ -230,7 +231,7 @@ int micDcBlockFilter(
 		output[i] = yv[2];
 	}
 
-	return MIC_STATUS_SUCCESS;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 #else
 {
@@ -239,7 +240,7 @@ int micDcBlockFilter(
 	{	
 		output[i] = ((input[i] - 2048));
 	}
-	return MIC_STATUS_SUCCESS;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 #endif
 
@@ -314,21 +315,21 @@ micDataBlock_t* micBlockGet(void)
 /** 
  * Start audio capturing
  * param: none
- * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+ * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
 **/
 int micStart(void)
 {
 	TIMER0_CTL_R |= (TIMER_CTL_TAOTE | TIMER_CTL_TAEN);
-	return MIC_STATUS_SUCCESS;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /** 
  * Stop audio capturing
  * param: none
- * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+ * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
 **/
 int micStop(void)
 {
 	TIMER0_CTL_R &= ~(TIMER_CTL_TAOTE | TIMER_CTL_TAEN);
-	return MIC_STATUS_SUCCESS;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }

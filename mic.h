@@ -8,8 +8,6 @@
 #define __MIC_H__
 #include <stdint.h>
 
-#define MIC_STATUS_SUCCESS 1
-#define MIC_STATUS_FAILURE 0
 /* test feature */
 /* use fake 1011 tone data */
 #define MIC_TEST_1011_TONE   0 //1-enable, 0-disable

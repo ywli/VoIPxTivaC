@@ -37,9 +37,6 @@ typedef struct
 	int numOfTotal;
 }dmaBuffer_t;
 
-#define DMA_BUFFER_STATUS_SUCCESS  0
-#define DMA_BUFFER_STATUS_FAILURE -1
-
 #define DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1  1
 #define DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_2  2
 #define DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1  3
@@ -49,7 +46,6 @@ typedef struct
 #define DMA_BUFFER_GET_OPT_APP_GET_UNIT_2  2
 #define DMA_BUFFER_GET_OPT_DRV_GET_UNIT_1  3
 #define DMA_BUFFER_GET_OPT_DRV_GET_UNIT_2  4
-
 
 /*
  * purpose: initialize a DMA buffer

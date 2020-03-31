@@ -180,5 +180,5 @@ int sysInit(void)
 	/* UI */
 	ledInit();
 
-	return 0;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }

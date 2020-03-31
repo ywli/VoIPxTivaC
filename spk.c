@@ -192,7 +192,7 @@ int spkInit(void)
 
 	spkDma();
 
-	return 0;
+	return;
 }
 
 int spkWrite(
