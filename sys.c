@@ -1,7 +1,7 @@
 // TI library
 #include "tm4c123gh6pm.h"
 #include "sys.h"
-
+#include "dma.h"
 #include <stdint.h>
 
 
@@ -50,6 +50,9 @@ int sysInit(void)
 	// SYSCTL_RCC_R &= ~SYSCTL_RCC_BYPASS;
 	// SYSCTL_RCC2_R &= ~SYSCTL_RCC2_BYPASS2;
 
+	/* DMA */
+	dmaInit();
+	
 	/*
 	 * ADC 
 	 */

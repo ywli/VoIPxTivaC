@@ -164,6 +164,14 @@ int dmaChInit(
 
     /* set control word for the DMA table entry */
 	dmaTable[dmaChId].chCtl = ctlReg;
+    dmaTable[dmaChId].reserved = ctlReg;
+
+    /* set control word for the alternative DMA table entry */
+    if (dmaMode == DMA_MODE_PINGPONG)
+    {
+        dmaTable[dmaChId + 32].chCtl = ctlReg;
+        dmaTable[dmaChId + 32].reserved = ctlReg;
+    }
 
     return COMMON_RETURN_STATUS_SUCCESS;
 }
@@ -187,6 +195,9 @@ int dmaChRequest(
     uint32_t offset;
     uint32_t ctlReg;
     uint32_t u32tmp;
+    uint32_t bitMask;
+
+    bitMask = (1 << dmaChId);
 
     /* primary entry */
     ctlReg = dmaTable[dmaChId].chCtl;
@@ -195,7 +206,8 @@ int dmaChRequest(
     u32tmp = ((ctlReg & UDMA_CHCTL_XFERSIZE_M) >> UDMA_CHCTL_XFERSIZE_S);
 
     /* primary/alternative switching in ping-pong mode hanlding */
-    if ((ctlReg & UDMA_CHCTL_XFERMODE_M) == UDMA_CHCTL_XFERMODE_PINGPONG)
+    if ((dmaTable[dmaChId].reserved & UDMA_CHCTL_XFERMODE_M) 
+            == UDMA_CHCTL_XFERMODE_PINGPONG)
     {
         /* if primary entry is still busy, assume alternative entry is idle */
         if (u32tmp != 0)
@@ -208,7 +220,7 @@ int dmaChRequest(
     }
 
     /* if DMA still running */
-    if (u32tmp != 0)
+    if (UDMA_ENASET_R & bitMask)
     {
         return COMMON_RETURN_STATUS_FAILURE;
     }
@@ -224,15 +236,15 @@ int dmaChRequest(
     u32tmp = ctlReg & UDMA_CHCTL_SRCSIZE_M;
     if (u32tmp == UDMA_CHCTL_SRCSIZE_8)
     {
-        offset = 1 * numOfElement;
+        offset = 1 * (numOfElement - 1);
     }
     else if (u32tmp == UDMA_CHCTL_SRCSIZE_16)
     {
-        offset = 2 * numOfElement;
+        offset = 2 * (numOfElement - 1);
     }
     else if (u32tmp == UDMA_CHCTL_SRCSIZE_32)
     {
-        offset = 4 * numOfElement;
+        offset = 4 * (numOfElement - 1);
     }
     else
     {
@@ -264,11 +276,15 @@ int dmaChRequest(
      */
     dmaTable[dmaChId].srcAddr = srcAddr;
     dmaTable[dmaChId].dstAddr = dstAddr;
+    dmaTable[dmaChId].chCtl = dmaTable[dmaChId].reserved;
     dmaTable[dmaChId].chCtl &= ~UDMA_CHCTL_XFERSIZE_M;
     dmaTable[dmaChId].chCtl |= (((numOfElement - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M);
 
+    /* clear DMA status bit  tbd */
+    UDMA_CHIS_R |= bitMask;
+
 	/* enable uDMA channel */
-	UDMA_ENASET_R |= (1 << dmaChId);
+	UDMA_ENASET_R |= bitMask;
 
     return COMMON_RETURN_STATUS_SUCCESS;
 }

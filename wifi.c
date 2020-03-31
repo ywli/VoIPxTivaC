@@ -8,6 +8,7 @@
 #include "sys.h"
 #include "cbuff_dma.h"
 #include "dmaBuffer.h"
+#include "dma.h"
 #include "wifi.h"
 
 #define WIFI_BUFFER_SIZE        1024
@@ -40,72 +41,10 @@ uint8_t wifiAtTest0[] = "AT+CIPMUX=1\r\n";
 uint8_t wifiAtTest1[] = "AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n";
 uint8_t wifiAtTest2[] = "AT+CIPSEND=4,172\r\n";
 
-static void wifiDmaInit(void)
+static void wifiDmaRxRequest(void)
 {
-    uint8_t dmaChId;
-
-    /* 
-	 * set a DMA channel for receive 
-	 */
-
-	/* channel attribute */
-	dmaChId = WIFI_DMA_CH_RX;
-
-	/* configure channel assignment, CH18, enc 2 = UART4RX */
-	UDMA_CHMAP2_R &= ~UDMA_CHMAP2_CH18SEL_M;
-	UDMA_CHMAP2_R |= ((2 << UDMA_CHMAP2_CH18SEL_S) & UDMA_CHMAP2_CH18SEL_M);
-
-	/* 1- default channel priority level, omitted */
-
-	/* 2- use primary control structure, omitted */
-
-	/* 3- respond to both single and burst requests, omitted */
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
-
-	/* channel control structure */
-    wifiRxDma();
-
-
-    /* 
-	 * set a DMA channel for transmit 
-	 */
-
-	/* channel attribut */
-	dmaChId = WIFI_DMA_CH_TX;
-
-	/* configure channel assignment, CH19, enc 2 = UART4TX */
-	UDMA_CHMAP2_R &= ~UDMA_CHMAP2_CH19SEL_M;
-	UDMA_CHMAP2_R |= ((2 << UDMA_CHMAP2_CH19SEL_S) & UDMA_CHMAP2_CH19SEL_M);
-
-	/* 1- default channel priority level, omitted */
-
-	/* 2- use primary control structure, omitted */
-
-	/* 3- respond to both single and burst requests, omitted */
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
-
-    return;
-}
-
-static void wifiRxDma(void)
-{
-    uint8_t dmaChId;
     uint8_t *addr;
     int32_t len;
-
-    dmaChId = WIFI_DMA_CH_RX;
-
-    if (UDMA_CHIS_R & (1 << dmaChId) == 0)
-    {
-        return;
-    }
-
-    /* clear uDMA status bit */
-    UDMA_CHIS_R |= (1 << dmaChId);
 
     /* prepare space in DMA buffer */
     cbuff_dma_enqueue_driver1(
@@ -113,55 +52,52 @@ static void wifiRxDma(void)
         &addr, 
         &len);
 
-    /* DMA channel control description */
-    dmaTable[dmaChId].dstAddr = (uint32_t) (addr + len - 1);
-	dmaTable[dmaChId].srcAddr = (uint32_t) &UART4_DR_R;
-	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_8  |
-							  UDMA_CHCTL_DSTSIZE_8 |
-							  UDMA_CHCTL_SRCINC_NONE|
-							  UDMA_CHCTL_SRCSIZE_8 |
-							  UDMA_CHCTL_ARBSIZE_1  |//revise
-							  (((len - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
-                              UDMA_CHCTL_XFERMODE_BASIC;
-
-    /* re-enable DMA */
-    UDMA_ENASET_R |= (1 << WIFI_DMA_CH_RX);
+    dmaChRequest(
+        WIFI_DMA_RX_CH,
+        &UART4_DR_R,
+        addr,
+        len);
 }
 
-static void wifiTxDma(
+static void wifiDmaTxRequest(
     uint8_t *addr,
     int32_t len)
 {
-    uint8_t dmaChId = WIFI_DMA_CH_TX;
-    
-    /* still running */
-    if (UDMA_ENASET_R & (1 << dmaChId))
-    {
-        return;
-    }
-
     /* UART still full */
     if (UART4_FR_R & UART_FR_TXFF)
     {
         return;
     }
 
-    /* clear DMA status bit */
-    UDMA_CHIS_R |= (1 << dmaChId);
+    dmaChRequest(
+        WIFI_DMA_TX_CH, 
+        addr, 
+        &UART4_DR_R, 
+        len);
+}
 
-    /* DMA channel control description */
-    dmaTable[dmaChId].srcAddr = (uint32_t) (addr + len - 1);
-	dmaTable[dmaChId].dstAddr = (uint32_t) &UART4_DR_R;
-	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_NONE|
-							  UDMA_CHCTL_DSTSIZE_8  |
-							  UDMA_CHCTL_SRCINC_8   |
-							  UDMA_CHCTL_SRCSIZE_8  |
-							  UDMA_CHCTL_ARBSIZE_1  |//revise
-							  (((len - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
-                              UDMA_CHCTL_XFERMODE_BASIC;
+static void wifiDmaInit(void)
+{
+    /* set a DMA channel for transmit */
+    dmaChInit(
+        WIFI_DMA_TX_CH,
+        WIFI_DMA_TX_ENC,
+        WIFI_DMA_TX_MODE,
+        WIFI_DMA_TX_DIR,
+        WIFI_DMA_TX_ELEMENT_SIZE);
 
-    /* re-enable DMA */
-    UDMA_ENASET_R |= (1 << dmaChId);
+    /* set a DMA channel for receive */
+    dmaChInit(
+        WIFI_DMA_RX_CH,
+        WIFI_DMA_RX_ENC,
+        WIFI_DMA_RX_MODE,
+        WIFI_DMA_RX_DIR,
+        WIFI_DMA_RX_ELEMENT_SIZE);
+
+	/* channel control structure */
+    wifiDmaRxRequest();
+
+    return;
 }
 
 static void wifiTxPktInit(void)
@@ -210,64 +146,38 @@ static void wifiAtInit(void)
     wifiAt[2].wifiPktSize = 18;
 }
 
-int wifiTxBackgroundTask(void)
+static void wifiUartInit(void)
 {
-    static int i = 0;
-    wifiXferBlock_t *pktP = (wifiXferBlock_t *) 0;
+    /* UART config */
+    /* 1- disable UART */
+    UART4_CTL_R = 0;
 
-    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) != 0)
-    {
-        return WIFI_STATUS_FAILURE;
-    }
+    /* 2-, 3- baudrate config */
+    UART4_IBRD_R = 43;
+    UART4_FBRD_R = 26;
 
-    /* determine c */
-    if ((i % 1000) == 0)
-    {
-        /* AT command 0 */
-        pktP = &wifiAt[0];
-    }
-    else if((i % 1000) == 1)
-    {
-        /* AT command 1 */
-        pktP = &wifiAt[1];
-    }
-    else// if (wifiCb.wifiTxPktBuffer.numOfAvail > 0)
-    {
-        if ((i % 2) == 0)
-        {
-            /* AT command 2 */
-            pktP = &wifiAt[2];
-        }
-        else if ((i % 2) == 1)
-        {
-            /* packet */
-            pktP = (wifiXferBlock_t *) dmaBufferGet(
-                        &wifiCb.wifiTxPktBuffer, 
-                        DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+    /* 4- serial parameter */
+    UART4_LCRH_R = UART_LCRH_WLEN_8|
+                   UART_LCRH_FEN;
 
-            if (pktP != 0)
-            {
-                dmaBufferGet(
-                    &wifiCb.wifiTxPktBuffer, 
-                    DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
-            }
-            pktP = &wifiTxPkt[0];
-        }
-    }
-    
+    /* 5- UART clock config system clock */
+    UART4_CC_R = 0x00;
 
-    if (pktP == 0)
-    {
-        return WIFI_STATUS_FAILURE;
-    }
+    /* 6- DMA config */
+    UART4_DMACTL_R = UART_DMACTL_RXDMAE|
+                     UART_DMACTL_TXDMAE;
 
-    /* perform DMA transfer */
-    wifiTxDma(
-        pktP->wifiPktP, 
-        pktP->wifiPktSize);
+    /* enable interrupt */
+    // UART4_IM_R = UART_IM_TXIM|
+    //              UART_IM_RXIM;
 
-    i++;
-    return WIFI_STATUS_SUCCESS;
+    // NVIC_EN1_R |= (1<<28);
+
+
+    /* 7- enable UART */
+    UART4_CTL_R = UART_CTL_UARTEN|
+                  UART_CTL_RXE|
+                  UART_CTL_TXE;
 }
 
 int wifiTest = 0;
@@ -319,71 +229,11 @@ int wifiTxBackgroundTask2(int c)
     }
 
     /* perform DMA transfer */
-    wifiTxDma(
+    wifiDmaTxRequest(
         pktP->wifiPktP, 
         pktP->wifiPktSize);
 
     return WIFI_STATUS_SUCCESS;
-}
-
-static void wifiUartInit(void)
-{
-    /* UART config */
-    /* 1- disable UART */
-    UART4_CTL_R = 0;
-
-    /* 2-, 3- baudrate config */
-    UART4_IBRD_R = 43;
-    UART4_FBRD_R = 26;
-
-    /* 4- serial parameter */
-    UART4_LCRH_R = UART_LCRH_WLEN_8|
-                   UART_LCRH_FEN;
-
-    /* 5- UART clock config system clock */
-    UART4_CC_R = 0x00;
-
-    /* 6- DMA config */
-    UART4_DMACTL_R = UART_DMACTL_RXDMAE|
-                     UART_DMACTL_TXDMAE;
-
-    /* enable interrupt */
-    // UART4_IM_R = UART_IM_TXIM|
-    //              UART_IM_RXIM;
-
-    // NVIC_EN1_R |= (1<<28);
-
-
-    /* 7- enable UART */
-    UART4_CTL_R = UART_CTL_UARTEN|
-                  UART_CTL_RXE|
-                  UART_CTL_TXE;
-}
-
-void wifiBackgroundTask(void)
-{
-    /* TX */
-    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) == 0)
-    {
-        //wifiTxBackgroundTask();
-    }
-    
-    /* RX */
-    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_RX)) == 0)
-    {
-        /* transfer completed */
-        if (wifiCb.wifiRxBuffer.numOfXfer > 0)
-        {
-            /* confirm block transferred */
-            cbuff_dma_enqueue_driver2(&wifiCb.wifiRxBuffer);
-        }
-        /* idle */
-        else
-        {
-            /* initia next transfer */
-            wifiRxDma();
-        }
-    }
 }
 
 /** 

@@ -6,8 +6,10 @@
 
 /* project resource */
 #include "sys.h"
+#include "dma.h"
 #include "dmaBuffer.h"
 #include "mic.h"
+#include "abm.h"
 
 /* definition of control block */
 typedef struct 
@@ -34,7 +36,7 @@ void micISR(void)
 		DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
 
 	/* reload next block */
-	micDma();
+	micDmaRequest();
 
 	return;
 }
@@ -44,55 +46,25 @@ void micISR(void)
  * param: none
  * return: none
 **/
-static void micDma(void)
-{
-    static uint8_t phase = 0;
-    uint8_t dmaChId;
+static void micDmaRequest(void)
+{   
 	micDataBlock_t *blockP;
-	int16_t *sampleP; //sample reference
-    int32_t sampleNum;   //sample number
 
     /* prepare space in DMA buffer */
 	blockP = (micDataBlock_t *) dmaBufferPut(
 									&micCb.micBuffer, 
 									DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
-	/* no space for data tbd: should revise overrun behaviour */
+	/* no space for data */
 	if (blockP == 0)
 	{
-		return;
+		abmAbort();
 	}
 
-	sampleP = &blockP->micDataBlock[0];
-	sampleNum = MIC_BLOCK_NUM_OF_SP;
-
-    /* phase process */
-    if (phase == 0)
-    {
-        phase = 1;
-        dmaChId = MIC_DMA_CH;
-    }
-    else
-    {
-        phase = 0;
-        dmaChId = MIC_DMA_CH + 32;
-    }
-	/* 
-	* set a DMA channel for ping pong receive 
-	*/
-    /* DMA channel control description */
-	dmaTable[dmaChId].dstAddr = (uint32_t) (sampleP + sampleNum - 1);
-	dmaTable[dmaChId].srcAddr = (uint32_t) &ADC0_SSFIFO0_R;
-	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_16  |
-							  UDMA_CHCTL_DSTSIZE_16 |
-							  UDMA_CHCTL_SRCINC_NONE|
-							  UDMA_CHCTL_SRCSIZE_16 |
-							  UDMA_CHCTL_ARBSIZE_1  |//revise
-							  (((sampleNum - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
-							  UDMA_CHCTL_NXTUSEBURST | //revise
-							  UDMA_CHCTL_XFERMODE_PINGPONG;
-
-	/* enable uDMA channel */
-	UDMA_ENASET_R |= (1 << MIC_DMA_CH);
+	dmaChRequest(
+		MIC_DMA_CH, 
+		(uint32_t *) &ADC0_SSFIFO0_R, 
+		(uint32_t *) &blockP->micDataBlock[0], //sample reference
+		MIC_BLOCK_NUM_OF_SP);                  //sample number
 }
 
 /** 
@@ -102,29 +74,16 @@ static void micDma(void)
 **/
 void micDmaInit(void)
 {
-	const uint8_t dmaChId = MIC_DMA_CH;
-
-	/* channel attribut */
-	
-	/* configure channel assignment, CH14, enc 0 = ADC0 SS0 */
-	UDMA_CHMAP1_R &= ~UDMA_CHMAP1_CH14SEL_M;
-	UDMA_CHMAP1_R |= ((0 << UDMA_CHMAP1_CH14SEL_S) & UDMA_CHMAP1_CH14SEL_M);
-
-	/* 1- default channel priority level */
-	UDMA_PRIOSET_R = 0x00000000;
-
-	/* 2- use primary control structure */
-	UDMA_ALTSET_R = 0x00000000;
-
-	/* 3- respond to both single and burst requests */
-	UDMA_USEBURSTCLR_R = 0x00000000;
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
+	dmaChInit(
+		MIC_DMA_CH, 
+		MIC_DMA_ENC, 
+		MIC_DMA_MODE,
+		MIC_DMA_DIR, 
+		MIC_DMA_ELEMENT_SIZE);
 
 	/* channel control structure */
-	micDma();
-	micDma();
+	micDmaRequest();
+	micDmaRequest();
 }
 
 /** 
@@ -270,10 +229,7 @@ int micBlockFilter(
 	
 	int i;
 	for (i = 0; i < num; i++)
-	{
-		//output[i] = ((input[i] - 2048) << 7);
-		
-
+	{	
 		#if MIC_TEST_1011_TONE
 		output[i] = ((input[i] >> 8) & 0xff);
 		#else

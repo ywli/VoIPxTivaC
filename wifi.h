@@ -12,6 +12,20 @@
 #define WIFI_STATUS_SUCCESS 1
 #define WIFI_STATUS_FAILURE 0
 
+/* 
+ * DMA definitions 
+ */
+#define WIFI_DMA_RX_CH            18
+#define WIFI_DMA_RX_ENC           2
+#define WIFI_DMA_RX_MODE          DMA_MODE_PINGPONG
+#define WIFI_DMA_RX_DIR           DMA_DIR_IO_TO_RAM
+#define WIFI_DMA_RX_ELEMENT_SIZE  1
+#define WIFI_DMA_TX_CH            19
+#define WIFI_DMA_TX_ENC           2
+#define WIFI_DMA_TX_MODE          DMA_MODE_BASIC
+#define WIFI_DMA_TX_DIR           DMA_DIR_RAM_TO_IO
+#define WIFI_DMA_TX_ELEMENT_SIZE  1
+
 typedef struct{
     int wifiPktSize;
     uint8_t *wifiPktP;

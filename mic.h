@@ -18,10 +18,9 @@
 /* microphone sampling rate */
 #define MIC_SAMPLE_RATE_HZ   8000
 
-/* DMA channel index */
-#define MIC_DMA_CH           14
-
-/* audio block definition */
+/* 
+ * audio block definition 
+ */
 /* time duration of a block in ms */
 #define MIC_BLOCK_MS         20
 /* number of samples in a block */
@@ -30,6 +29,17 @@
 #define MIC_BLOCK_SIZE       (MIC_BLOCK_NUM_OF_SP * sizeof(uint16_t))
 /* number of blocks */
 #define MIC_BLOCK_NUM_OF     10
+
+/*
+ * DMA definition
+ */
+/* DMA channel index */
+#define MIC_DMA_CH            14
+#define MIC_DMA_ENC           0
+#define MIC_DMA_MODE          DMA_MODE_PINGPONG
+#define MIC_DMA_DIR           DMA_DIR_IO_TO_RAM
+#define MIC_DMA_ELEMENT_SIZE  2
+
 
 typedef struct 
 {

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#if 0
 #define SPK_BUFFER_NUM_OF_SP 1600
 #define SPK_SAMPLE_SIZE      2
 #define SPK_BUFFER_SIZE      (SPK_BUFFER_NUM_OF_SP * SPK_SAMPLE_SIZE)
@@ -220,3 +221,5 @@ int spkWrite(
 
 	return numOfSample;
 }
+
+#endif
