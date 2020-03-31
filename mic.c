@@ -192,7 +192,7 @@ int micInit(void)
 	micDmaInit();
 
 	/* automatic start */
-	//micStart();
+	micStart();
 
 	return MIC_STATUS_SUCCESS;
 }

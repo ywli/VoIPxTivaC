@@ -53,19 +53,25 @@ static void wifiDmaRxRequest(void)
     uint8_t *addr;
     int32_t len;
 
+    if (UART4_FR_R & UART_FR_RXFE)
+    {
+        return;
+    }
+    
     /* prepare space in DMA buffer */
     addr = (uint8_t *) dmaBufferPut(
         &wifiCb.wifiRxBuffer,
         DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
+    if (addr == 0)
+    {
+        //tbd: error
+        return;
+    }
+
     dmaBufferPut(
         &wifiCb.wifiRxBuffer,
         DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
     len = WIFI_RX_BLOCK_SIZE;
-    
-    if (addr == 0)
-    {
-        //tbd: error
-    }
 
     dmaChRequest(
         WIFI_DMA_RX_CH,
@@ -256,7 +262,7 @@ int wifiTxBackgroundTask2(int c)
         pktP->wifiPktP, 
         pktP->wifiPktSize);
 
-    //wifiDmaRxRequest();
+    wifiDmaRxRequest();
 
     return WIFI_STATUS_SUCCESS;
 }
