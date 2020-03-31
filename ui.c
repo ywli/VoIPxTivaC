@@ -1,12 +1,19 @@
-// TI library
-#include "tm4c123gh6pm.h"
+/*
+ * ui.c -- user interface
+ *
+ *
+ */
 
+/* standard library */
 #include <stdint.h>
+
+/* TI library */
+#include "tm4c123gh6pm.h"
 
 void ledInit(void)
 {
 	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R5;// activate clock for PortF
-    while ((SYSCTL_PRGPIO_R & 0x00000020) == 0)
+    while ((SYSCTL_PRGPIO_R & SYSCTL_RCGCGPIO_R5) == 0)
     {};                                     // wait until PortF is ready
     GPIO_PORTF_LOCK_R = 0x4C4F434B;         // unlock GPIO PortF
     GPIO_PORTF_CR_R = 0x1F;                 // allow changes to PF4-0

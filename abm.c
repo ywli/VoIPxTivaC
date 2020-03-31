@@ -1,3 +1,8 @@
+/*
+ * abm.c -- abort management
+ *
+ *
+ */
 #include "abm.h"
 
 /** 
@@ -11,5 +16,4 @@ int abmAbort(void)
 	{
 		/* do nothing */
 	}
-
 }

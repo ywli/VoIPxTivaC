@@ -1,12 +1,20 @@
-// TI library
+/*
+ * spk.c -- speaker module
+ *
+ *
+ */
+
+/* standard library */
+#include <stdint.h>
+
+/* TI resource */
 #include "tm4c123gh6pm.h"
 
+/* project resources */
 #include "common.h"
 #include "sys.h"
 #include "dma.h"
 #include "dmaBuffer.h"
-
-#include <stdint.h>
 
 #if 1
 #define SPK_BUFFER_NUM_OF_SP 1600

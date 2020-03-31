@@ -1,3 +1,8 @@
+/*
+ * dma.c -- DMA operation
+ *
+ *
+ */
 /* standard library */
 #include <stdint.h>
 

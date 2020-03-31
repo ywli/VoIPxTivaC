@@ -1,11 +1,19 @@
-// TI library
-#include "tm4c123gh6pm.h"
-#include "sys.h"
-#include "dma.h"
+/*
+ * sys.c -- system module
+ *
+ *
+ */
+
+/* standard library */
 #include <stdint.h>
 
+/* TI resource */
+#include "tm4c123gh6pm.h"
 
-
+/* project resources */
+#include "common.h"
+#include "dma.h"
+#include "sys.h"
 
 int sysInit(void)
 {

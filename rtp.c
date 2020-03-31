@@ -1,7 +1,16 @@
-// TI library
+/*
+ * rtp.c -- RTP protocol
+ *
+ *
+ */
+/* standard library */
+#include <stdint.h>
+
+/* 3-rd party resources */
 #include "ez_rtp.h"
 #include "g722.h"
-#include <stdint.h>
+
+/* project resource */
 #include "rtp.h"
 
 typedef struct

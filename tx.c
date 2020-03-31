@@ -1,8 +1,14 @@
+/*
+ * tx.c -- transmit task
+ *
+ *
+ */
 
-/* standard C library */
+/* standard library */
 #include <stdint.h>
-//#include <stdbool.h>
-#include <stdio.h>
+
+/* TI resource */
+#include "tm4c123gh6pm.h"
 
 /* FreeRTOS includes */
 #include "FreeRTOSConfig.h"
@@ -10,11 +16,11 @@
 #include "task.h"
 #include "queue.h"
 
-/* modules */
+/* project resources */
 #include "mic.h"
 #include "wifi.h"
 #include "rtp.h"
-
+#include "tx.h"
 
 void txInit(void)
 {

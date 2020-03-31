@@ -1,3 +1,9 @@
+/*
+ * wifi.c -- Wifi module
+ *
+ *
+ */
+
 /* standard library */
 #include <stdint.h>
 

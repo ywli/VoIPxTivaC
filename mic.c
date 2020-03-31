@@ -1,10 +1,16 @@
+/*
+ * mic.c -- microphone module
+ *
+ *
+ */
+
 /* standard library */
 #include <stdint.h>
 
 /* TI resource */
 #include "tm4c123gh6pm.h"
 
-/* project resource */
+/* project resources */
 #include "sys.h"
 #include "dma.h"
 #include "dmaBuffer.h"

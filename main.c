@@ -1,33 +1,24 @@
-/* FreeRTOS 10 Tiva Demo
+/*
+ * main.c -- 
  *
- * main.c
  *
- * Andy Kobyljanec
- *
- * This is a simple demonstration project of FreeRTOS 8.2 on the Tiva Launchpad
- * EK-TM4C1294XL.  TivaWare driverlib sourcecode is included.
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
+/* standard library */
 
-// FreeRTOS includes
+/* FreeRTOS includes */
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 
+/* project resources */
 #include "common.h"
 #include "sys.h"
 #include "ui.h"
 #include "spk.h"
 #include "tx.h"
 #include "wifi.h"
-
-// TI library
-#include "tm4c123gh6pm.h"
-
 
 // Demo Task declarations
 void demoLEDTask(void *pvParameters);
