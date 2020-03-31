@@ -17,6 +17,7 @@
 /* module private definition */
 #define DMA_NUM_OF_ELEMENT_MAX 1023
 
+/* DMA channel description table */
 struct dmaTableEntry
 {
 	volatile uint32_t *srcAddr;

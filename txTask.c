@@ -20,7 +20,7 @@
 #include "mic.h"
 #include "wifi.h"
 #include "rtp.h"
-#include "tx.h"
+#include "txTask.h"
 
 void txInit(void)
 {

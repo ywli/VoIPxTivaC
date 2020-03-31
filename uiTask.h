@@ -1,14 +1,14 @@
 //*****************************************************************************
 //
-// tx.h - tx module
+// hwTask.h - Hardware task
 //
 //
 //*****************************************************************************
 
-#ifndef __TX_H__
-#define __TX_H__
+#ifndef __UITASK_H__
+#define __UITASK_H__
 
-void txInit(void);
+// Demo Task declarations
+void demoLEDTask(void *pvParameters);
 
-void txTask(void *pvParameters);
-#endif // __TX_H__
+#endif // __UITASK_H__

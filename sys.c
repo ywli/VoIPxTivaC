@@ -14,6 +14,7 @@
 #include "common.h"
 #include "dma.h"
 #include "sys.h"
+#include "ui.h"
 
 int sysInit(void)
 {
@@ -175,6 +176,9 @@ int sysInit(void)
 
 	/* step 5 enable PE3 analog function, p.687 */
 	GPIO_PORTE_AMSEL_R |= (1<<3);
+
+	/* UI */
+	ledInit();
 
 	return 0;
 }

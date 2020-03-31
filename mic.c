@@ -30,6 +30,7 @@ micDataBlock_t micBuffer[MIC_BLOCK_NUM_OF];
 micControlBlock_t micCb;
 
 static void micDmaRequest(void);
+
 /** 
  * Module ISR callback
  * param: none

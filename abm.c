@@ -8,7 +8,7 @@
 /** 
  * Abort handling
  * param: 
- * return: (int) should not return value
+ * return: (int)  -> should not return value
 **/
 int abmAbort(void)
 {

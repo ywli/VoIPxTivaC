@@ -13,73 +13,23 @@
 #include "queue.h"
 
 /* project resources */
-#include "common.h"
 #include "sys.h"
-#include "ui.h"
-#include "spk.h"
-#include "tx.h"
-#include "wifi.h"
+#include "txTask.h"
+#include "hwTask.h"
+#include "uiTask.h"
 
-// Demo Task declarations
-void demoLEDTask(void *pvParameters);
-
-
-// Flash the LEDs on the launchpad
-void demoLEDTask(void *pvParameters)
+void mainInit(void)
 {
-    for (;;)
-    {
-        vTaskDelay(1000);
-		ledToggle();
-		//printf("hello\n");
-    }
+    sysInit();
+    txInit();
+
+    return;
 }
 
-extern int wifiTxBackgroundTask2(int);
-int i = 0;
-/* hardware background task */
-void hwTask(void *pvParameters)
-{
-    for (;;)
-    {
-        if ((i%1000) == 0)
-        {
-            wifiTxBackgroundTask2(0);
-            vTaskDelay(10);
-        }
-        else if ((i%1000) == 1)
-        {
-            wifiTxBackgroundTask2(1);
-            vTaskDelay(10);
-        }
-        i++;
-
-
-        if (wifiTxBackgroundTask2(2) == COMMON_RETURN_STATUS_SUCCESS)
-        {
-            vTaskDelay(2);
-        }
-        else
-        {
-            continue;
-        }
-        
-        if (wifiTxBackgroundTask2(3) == COMMON_RETURN_STATUS_SUCCESS)
-        {
-            vTaskDelay(16);//it will be busy lower than that 
-        }
-
-        
-    }
-}
-
-// Main function
 int main(void)
 {
-    // Create demo tasks
-	sysInit();
-	ledInit();
-    txInit();
+    /* initialize */
+	mainInit();
 
     xTaskCreate(demoLEDTask, (const portCHAR *)"LEDs",
                 configMINIMAL_STACK_SIZE, NULL, 1, NULL);
