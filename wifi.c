@@ -125,7 +125,7 @@ static void wifiTxPktInit(void)
     /* initialize packet buffer */
     dmaBufferInit(
         &wifiCb.wifiTxPktBuffer,
-        (unsigned char *) &wifiTxPktBlock[0],
+        (void *) &wifiTxPktBlock[0],
         sizeof(wifiTxPktBlock),
         sizeof(wifiTxPktBlock[0]));
     
@@ -270,7 +270,7 @@ int wifiInit(void)
     /* initialize control block */
     dmaBufferInit(
         &wifiCb.wifiRxBuffer, 
-        &wifiRxArray[0], 
+        (void *) &wifiRxArray[0], 
         sizeof(wifiRxArray), 
         WIFI_RX_BLOCK_SIZE);
 

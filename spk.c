@@ -1,24 +1,37 @@
 // TI library
 #include "tm4c123gh6pm.h"
 
-#include "cbuff_dma.h"
+#include "common.h"
 #include "sys.h"
+#include "dma.h"
+#include "dmaBuffer.h"
 
 #include <stdint.h>
 
-#if 0
+#if 1
 #define SPK_BUFFER_NUM_OF_SP 1600
 #define SPK_SAMPLE_SIZE      2
 #define SPK_BUFFER_SIZE      (SPK_BUFFER_NUM_OF_SP * SPK_SAMPLE_SIZE)
 #define SPK_BLOCK_SIZE       SPK_BUFFER_SIZE/4
-#define SPK_DMA_CH           11
+
+/*
+ * DMA definition
+ */
+/* DMA channel index */
+#define SPK_DMA_CH            11
+#define SPK_DMA_ENC           0
+#define SPK_DMA_MODE          DMA_MODE_BASIC
+#define SPK_DMA_DIR           DMA_DIR_RAM_TO_IO
+#define SPK_DMA_ELEMENT_SIZE  2
+
 #define SPK_ARCH             1 //1- SPI slave + PWM, 2- SPI master
 
 struct spkControlBlock
 {
-	uint16_t spkSample[SPK_BUFFER_NUM_OF_SP];
-	cbuff_dma_t spkBuffer;
+	dmaBuffer_t spkBuffer;
 };
+
+uint16_t spkSample[SPK_BUFFER_NUM_OF_SP];
 
 struct spkControlBlock spkCb;
 
@@ -30,7 +43,6 @@ uint16_t spkTestData[] =
 
 void spkDma(void)
 {
-    uint8_t dmaChId;
 	uint16_t *sampleP;
 	uint32_t numOfSample;
 
@@ -38,41 +50,27 @@ void spkDma(void)
 	/**/
 	
 	/* get data from buffer */
-	// if (cbuff_dma_dequeue_driver1(
-	// 	  	&spkCb.spkBuffer,
-	// 	  	(unsigned char **) &sampleP,
-	// 	  	&numOfSample) == 0)
-	// {
-	// 	return;
-	// }
+	sampleP = (uint16_t *) dmaBufferGet(
+					&spkCb.spkBuffer,
+					DMA_BUFFER_GET_OPT_DRV_GET_UNIT_1);
+
+	if (sampleP == 0)
+	{
+		return;//tbd
+	}
+	dmaBufferGet(
+		&spkCb.spkBuffer,
+		DMA_BUFFER_GET_OPT_DRV_GET_UNIT_2);
+
 	sampleP = &spkTestData[0];
 	numOfSample = sizeof(spkTestData) / sizeof(spkTestData[0]);
 
 	/* transfer block using DMA */
-    dmaChId = SPK_DMA_CH;
-
-    /* still running */
-    if (UDMA_ENASET_R & (1 << dmaChId))
-    {
-        return;
-    }
-
-    /* clear DMA status bit */
-    UDMA_CHIS_R |= (1 << dmaChId);
-
-    /* DMA channel control description */
-    dmaTable[dmaChId].srcAddr = (uint32_t) (sampleP + numOfSample - 1);
-	dmaTable[dmaChId].dstAddr = (uint32_t) &SSI0_DR_R;
-	dmaTable[dmaChId].chCtl = UDMA_CHCTL_DSTINC_NONE |
-							  UDMA_CHCTL_DSTSIZE_16  |
-							  UDMA_CHCTL_SRCINC_16   |
-							  UDMA_CHCTL_SRCSIZE_16  |
-							  UDMA_CHCTL_ARBSIZE_4   |//revise
-							  (((numOfSample - 1) << UDMA_CHCTL_XFERSIZE_S) & UDMA_CHCTL_XFERSIZE_M)|
-                              UDMA_CHCTL_XFERMODE_BASIC;
-
-    /* re-enable DMA */
-    UDMA_ENASET_R |= (1 << dmaChId);
+	dmaChRequest(
+		SPK_DMA_CH, 
+		(uint32_t *) sampleP, 
+		(uint32_t *) &SSI0_DR_R, 
+		numOfSample);
 
 	return;
 }
@@ -82,7 +80,7 @@ void spkISR(void)
 {
 	test++;
 	/* confirm block DMA transfer */
-	//cbuff_dma_dequeue_driver2(&spkCb.spkBuffer);
+	//tbd 
 
 	/* prepare next DMA transfer */
 	spkDma();
@@ -91,13 +89,12 @@ void spkISR(void)
 }
 
 int spkInit(void)
-{
-	cbuff_dma_init(
+{	
+	dmaBufferInit(
 		&spkCb.spkBuffer, 
-		(unsigned char*)&spkCb.spkSample[0],
-		SPK_BUFFER_SIZE,
+		(void *) &spkSample[0],
+		sizeof(spkSample),
 		SPK_BLOCK_SIZE);
-	
 	/* 
 	 * PWM
 	 * 8k frame clock 
@@ -177,26 +174,13 @@ int spkInit(void)
 	/* 7- enable SSI0 */
 	SSI0_CR1_R |= SSI_CR1_SSE;
 
-    /* 
-	 * set a DMA channel for transmit 
-	 */
-	uint8_t dmaChId;
-	
-	/* channel attribut */
-	dmaChId = SPK_DMA_CH;
-
-	/* configure channel assignment, CH11, enc 0 = SSI0TX */
-	UDMA_CHMAP1_R &= ~UDMA_CHMAP1_CH11SEL_M;
-	UDMA_CHMAP1_R |= ((0 << UDMA_CHMAP1_CH11SEL_S) & UDMA_CHMAP1_CH11SEL_M);
-
-	/* 1- default channel priority level, omitted */
-
-	/* 2- use primary control structure, omitted */
-
-	/* 3- respond to both single and burst requests, omitted */
-	
-	/* 4- clear mask */
-	UDMA_REQMASKCLR_R |= (1 << dmaChId);
+    /* set a DMA channel for transmit */
+	dmaChInit(
+		SPK_DMA_CH, 
+		SPK_DMA_ENC,
+		SPK_DMA_MODE,
+		SPK_DMA_DIR,
+		SPK_DMA_ELEMENT_SIZE);
 
 	spkDma();
 
@@ -204,22 +188,35 @@ int spkInit(void)
 }
 
 int spkWrite(
-	uint16_t *sampleP,
+	int16_t *sampleP,
 	uint16_t numOfSample)
 {
-	// /* put data into DMA buffer */
-	// if (cbuff_dma_enqueue_app(
-	// 	&spkCb.spkBuffer,
-	// 	(unsigned char *)sampleP,
-	// 	(numOfSample * 2)) == 0)
-	// {
-	// 	return 0;
-	// }
+	int16_t *dstSampleP;
+	/* put data into DMA buffer */
+	dstSampleP = dmaBufferPut(
+		&spkCb.spkBuffer,
+		DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+	
+	if (dstSampleP == 0)
+	{
+		//error tbd
+		return COMMON_RETURN_STATUS_FAILURE;
+	}
+
+	dmaBufferPut(
+		&spkCb.spkBuffer,
+		DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_2);
+
+	int i;
+	for (i = 0; i < numOfSample; i++)
+	{
+		dstSampleP[i] = sampleP[i];
+	}
 
 	/* call DMA */
 	spkDma();
 
-	return numOfSample;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 #endif

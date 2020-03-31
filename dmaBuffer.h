@@ -64,7 +64,7 @@ typedef struct
 int
 dmaBufferInit(
 	dmaBuffer_t *buff, 
-	unsigned char *staticbuff, 
+	void *staticbuff, 
 	int bufSize, 
 	int unitSize);
 
