@@ -5,17 +5,16 @@
 #include "tm4c123gh6pm.h"
 
 /* project resource */
-#include "sys.h"
-#include "cbuff_dma.h"
+#include "common.h"
 #include "dmaBuffer.h"
 #include "dma.h"
 #include "wifi.h"
 
+/* RX definitions */
 #define WIFI_RX_BLOCK_SIZE      32
 #define WIFI_RX_BLOCK_NUM_OF    5
 
-#define WIFI_DMA_CH_RX          18
-#define WIFI_DMA_CH_TX          19
+/* TX definitions */
 #define WIFI_PKT_NUM_OF         4
 #define WIFI_PKT_SIZE           172
 
@@ -30,23 +29,23 @@ struct wifiControlBlock wifiCb;
 uint8_t wifiRxArray[WIFI_RX_BLOCK_SIZE * WIFI_RX_BLOCK_NUM_OF];
 
 /* TX packet */
-wifiXferBlock_t wifiTxPkt[WIFI_PKT_NUM_OF];
-uint8_t wifiPkt0[WIFI_PKT_SIZE];
-uint8_t wifiPkt1[WIFI_PKT_SIZE];
-uint8_t wifiPkt2[WIFI_PKT_SIZE];
-uint8_t wifiPkt3[WIFI_PKT_SIZE];
+wifiXferBlock_t wifiTxPktBlock[WIFI_PKT_NUM_OF];
+uint8_t wifiTxPktPayload0[WIFI_PKT_SIZE];
+uint8_t wifiTxPktPayload1[WIFI_PKT_SIZE];
+uint8_t wifiTxPktPayload2[WIFI_PKT_SIZE];
+uint8_t wifiTxPktPayload3[WIFI_PKT_SIZE];
 
 /* TX test packet */
 #if WIFI_TEST_CANNED_TX_PKT
-wifiXferBlock_t wifiTxTestPkt[1];
-uint8_t wifiTxTestPkt0[WIFI_PKT_SIZE];
+wifiXferBlock_t wifiTxTestPktBlock[1];
+uint8_t wifiTxTestPktPayload0[WIFI_PKT_SIZE];
 #endif 
 
 /* AT command */
-wifiXferBlock_t wifiAt[3];
-uint8_t wifiAtTest0[] = "AT+CIPMUX=1\r\n";
-uint8_t wifiAtTest1[] = "AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n";
-uint8_t wifiAtTest2[] = "AT+CIPSEND=4,172\r\n";
+wifiXferBlock_t wifiAtBlock[3];
+uint8_t wifiAtCmd0[] = "AT+CIPMUX=1\r\n";
+uint8_t wifiAtCmd1[] = "AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n";
+uint8_t wifiAtCmd2[] = "AT+CIPSEND=4,172\r\n";
 
 static void wifiDmaRxRequest(void)
 {
@@ -57,7 +56,7 @@ static void wifiDmaRxRequest(void)
     {
         return;
     }
-    
+
     /* prepare space in DMA buffer */
     addr = (uint8_t *) dmaBufferPut(
         &wifiCb.wifiRxBuffer,
@@ -75,8 +74,8 @@ static void wifiDmaRxRequest(void)
 
     dmaChRequest(
         WIFI_DMA_RX_CH,
-        &UART4_DR_R,
-        addr,
+        (uint32_t *) &UART4_DR_R,
+        (uint32_t *) addr,
         len);
 }
 
@@ -92,8 +91,8 @@ static void wifiDmaTxRequest(
 
     dmaChRequest(
         WIFI_DMA_TX_CH, 
-        addr, 
-        &UART4_DR_R, 
+        (uint32_t *) addr, 
+        (uint32_t *) &UART4_DR_R, 
         len);
 }
 
@@ -126,47 +125,47 @@ static void wifiTxPktInit(void)
     /* initialize packet buffer */
     dmaBufferInit(
         &wifiCb.wifiTxPktBuffer,
-        (unsigned char *) &wifiTxPkt[0],
-        sizeof(wifiTxPkt),
-        sizeof(wifiTxPkt[0]));
+        (unsigned char *) &wifiTxPktBlock[0],
+        sizeof(wifiTxPktBlock),
+        sizeof(wifiTxPktBlock[0]));
     
     /* initialize element in packet buffer */
-    wifiTxPkt[0].wifiPktP = &wifiPkt0[0];
-    wifiTxPkt[0].wifiPktSize = sizeof(wifiPkt0);
+    wifiTxPktBlock[0].wifiPktP = &wifiTxPktPayload0[0];
+    wifiTxPktBlock[0].wifiPktSize = sizeof(wifiTxPktPayload0);
 
-    wifiTxPkt[1].wifiPktP = &wifiPkt1[0];
-    wifiTxPkt[1].wifiPktSize = sizeof(wifiPkt1);
+    wifiTxPktBlock[1].wifiPktP = &wifiTxPktPayload1[0];
+    wifiTxPktBlock[1].wifiPktSize = sizeof(wifiTxPktPayload1);
 
-    wifiTxPkt[2].wifiPktP = &wifiPkt2[0];
-    wifiTxPkt[2].wifiPktSize = sizeof(wifiPkt2);
+    wifiTxPktBlock[2].wifiPktP = &wifiTxPktPayload2[0];
+    wifiTxPktBlock[2].wifiPktSize = sizeof(wifiTxPktPayload2);
 
-    wifiTxPkt[3].wifiPktP = &wifiPkt3[0];
-    wifiTxPkt[3].wifiPktSize = sizeof(wifiPkt3);
+    wifiTxPktBlock[3].wifiPktP = &wifiTxPktPayload3[0];
+    wifiTxPktBlock[3].wifiPktSize = sizeof(wifiTxPktPayload3);
 
     #if WIFI_TEST_CANNED_TX_PKT
     int i;
-    for (i = 0; i < sizeof(wifiTxTestPkt0); i++)
+    for (i = 0; i < sizeof(wifiTxTestPktPayload0); i++)
     {
-        wifiTxTestPkt0[i] = '0' + (i %10);
+        wifiTxTestPktPayload0[i] = '0' + (i %10);
     }
-    wifiTxTestPkt[0].wifiPktP = &wifiTxTestPkt0[0];
-    wifiTxTestPkt[0].wifiPktSize = sizeof(wifiTxTestPkt0);
+    wifiTxTestPktBlock[0].wifiPktP = &wifiTxTestPktPayload0[0];
+    wifiTxTestPktBlock[0].wifiPktSize = sizeof(wifiTxTestPktPayload0);
     #endif
 }
 
 static void wifiAtInit(void)
 {
     /* AT command 0 */
-    wifiAt[0].wifiPktP = &wifiAtTest0[0];
-    wifiAt[0].wifiPktSize = 13;
+    wifiAtBlock[0].wifiPktP = &wifiAtCmd0[0];
+    wifiAtBlock[0].wifiPktSize = 13;
 
     /* AT command 1 */
-    wifiAt[1].wifiPktP = &wifiAtTest1[0];
-    wifiAt[1].wifiPktSize = 41;
+    wifiAtBlock[1].wifiPktP = &wifiAtCmd1[0];
+    wifiAtBlock[1].wifiPktSize = 41;
 
     /* AT command 2 */
-    wifiAt[2].wifiPktP = &wifiAtTest2[0];
-    wifiAt[2].wifiPktSize = 18;
+    wifiAtBlock[2].wifiPktP = &wifiAtCmd2[0];
+    wifiAtBlock[2].wifiPktSize = 18;
 }
 
 static void wifiUartInit(void)
@@ -202,32 +201,26 @@ static void wifiUartInit(void)
                   UART_CTL_TXE;
 }
 
-int wifiRxBackgroundTask(void)
-{
-    //tbd
-    wifiDmaRxRequest();
-}
-
 int wifiTxBackgroundTask2(int c)
 {
     wifiXferBlock_t *pktP = (wifiXferBlock_t *) 0;
 
-    if ((UDMA_ENASET_R & (1 << WIFI_DMA_CH_TX)) != 0)
+    if ((UDMA_ENASET_R & (1 << WIFI_DMA_TX_CH)) != 0)
     {
-        return WIFI_STATUS_FAILURE;
+        return COMMON_RETURN_STATUS_FAILURE;
     }
 
     /* determine c */
     if ((c == 0) || (c == 1))
     {
         /* AT command 0 and 1 */
-        pktP = &wifiAt[c];
+        pktP = &wifiAtBlock[c];
     }
     else if (wifiCb.wifiTxPktBuffer.numOfAvail > 0)
     {
         if (c == 2)
         {
-            pktP = &wifiAt[2];
+            pktP = &wifiAtBlock[2];
         }
         else
         {
@@ -243,18 +236,18 @@ int wifiTxBackgroundTask2(int c)
                     DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
             }
             #if WIFI_TEST_CANNED_TX_PKT
-            pktP = &wifiTxTestPkt[0];
+            pktP = &wifiTxTestPktBlock[0];
             #endif
         }
     }
     else
     {
-        return WIFI_STATUS_FAILURE;
+        return COMMON_RETURN_STATUS_FAILURE;
     }
 
     if (pktP == 0)
     {
-        return WIFI_STATUS_FAILURE;
+        return COMMON_RETURN_STATUS_FAILURE;
     }
 
     /* perform DMA transfer */
@@ -264,13 +257,13 @@ int wifiTxBackgroundTask2(int c)
 
     wifiDmaRxRequest();
 
-    return WIFI_STATUS_SUCCESS;
+    return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /** 
  * Initialize module 
  * param: none
- * return: (int) -> WIFI_STATUS_SUCCESS, WIFI_STATUS_FAILURE
+ * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
 **/
 int wifiInit(void)
 {
@@ -293,14 +286,14 @@ int wifiInit(void)
     /* initialize DMA */
     wifiDmaInit();
 
-    return WIFI_STATUS_SUCCESS;
+    return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /** 
  * Read data from Wifi module
  * param: dataP -> output data reference
  * param: dataLen -> output data size in bytes
- * return: (int) -> WIFI_STATUS_SUCCESS, WIFI_STATUS_FAILURE
+ * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
 **/
 int wifiRead(
     uint8_t *dataP,
@@ -314,6 +307,8 @@ int wifiRead(
     // dmaBufferGet(
     //     &wifiCb.wifiRxBuffer,
     //     DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+
+    return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /** 
@@ -332,7 +327,7 @@ wifiXferBlock_t* wifiPktSend1(void)
  * Send packet (actual send the written packet, 
  *             returned by wifiPktSend1)
  * param: none
- * return: (int) -> WIFI_STATUS_SUCCESS, WIFI_STATUS_FAILURE
+ * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
 **/
 int wifiPktSend2(void)
 {
@@ -340,5 +335,5 @@ int wifiPktSend2(void)
         &wifiCb.wifiTxPktBuffer, 
         DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_2);
 
-    return WIFI_STATUS_SUCCESS;
+    return COMMON_RETURN_STATUS_SUCCESS;
 }

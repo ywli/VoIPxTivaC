@@ -23,6 +23,7 @@ micDataBlock_t micBuffer[MIC_BLOCK_NUM_OF];
 /* control block */
 micControlBlock_t micCb;
 
+static void micDmaRequest(void);
 /** 
  * Module ISR callback
  * param: none
@@ -266,7 +267,6 @@ static void filterloop()
 **/
 micDataBlock_t* micBlockGet(void)
 {
-	void *ret;
 	micDataBlock_t *blockP;
 
 	/* get block reference */

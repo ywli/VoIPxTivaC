@@ -12,5 +12,4 @@ int abmAbort(void)
 		/* do nothing */
 	}
 
-	return 0;
 }

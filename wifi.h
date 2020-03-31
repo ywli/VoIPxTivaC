@@ -9,9 +9,8 @@
 #define __WIFI_H__
 #include <stdint.h>
 
-#define WIFI_TEST_CANNED_TX_PKT 0
-#define WIFI_STATUS_SUCCESS 1
-#define WIFI_STATUS_FAILURE 0
+/* Module test option */
+#define WIFI_TEST_CANNED_TX_PKT   0 // 1- send canned packets, 0- send regular packets
 
 /* 
  * DMA definitions 
@@ -28,6 +27,7 @@
 #define WIFI_DMA_TX_DIR           DMA_DIR_RAM_TO_IO
 #define WIFI_DMA_TX_ELEMENT_SIZE  1
 
+/* transfer block definition */
 typedef struct{
     int wifiPktSize;
     uint8_t *wifiPktP;

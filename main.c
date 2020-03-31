@@ -18,6 +18,7 @@
 #include "task.h"
 #include "queue.h"
 
+#include "common.h"
 #include "sys.h"
 #include "ui.h"
 #include "spk.h"
@@ -63,7 +64,7 @@ void hwTask(void *pvParameters)
         i++;
 
 
-        if (wifiTxBackgroundTask2(2) == WIFI_STATUS_SUCCESS)
+        if (wifiTxBackgroundTask2(2) == COMMON_RETURN_STATUS_SUCCESS)
         {
             vTaskDelay(2);
         }
@@ -72,7 +73,7 @@ void hwTask(void *pvParameters)
             continue;
         }
         
-        if (wifiTxBackgroundTask2(3) == WIFI_STATUS_SUCCESS)
+        if (wifiTxBackgroundTask2(3) == COMMON_RETURN_STATUS_SUCCESS)
         {
             vTaskDelay(16);//it will be busy lower than that 
         }
