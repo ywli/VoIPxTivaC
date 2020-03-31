@@ -4,12 +4,11 @@
 //
 //
 //*****************************************************************************
-#include <stdint.h>
 
-#ifndef __SYS_H__
-#define __SYS_H__
+#ifndef __UI_H__
+#define __UI_H__
 
-int sysInit(void);
+#define COMMON_RETURN_STATUS_SUCCESS 0
+#define COMMON_RETURN_STATUS_FAILURE 1
 
-
-#endif // __SYS_H__
+#endif // __UI_H__

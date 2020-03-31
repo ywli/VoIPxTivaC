@@ -5,9 +5,7 @@
 #include <stdint.h>
 
 
-/* 1k alignment */
-#pragma DATA_ALIGN (dmaTable, 1024)
-struct dmaTableEntry dmaTable[64];
+
 
 int sysInit(void)
 {
@@ -64,22 +62,9 @@ int sysInit(void)
 	SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R0;
 	while ((SYSCTL_PRTIMER_R & SYSCTL_PRTIMER_R0) == 0)
 	{};
-	/* enable DMA */
-	SYSCTL_RCGCDMA_R |= SYSCTL_RCGCDMA_R0;
-	while ((SYSCTL_PRDMA_R & SYSCTL_PRDMA_R0) == 0)
-	{};
 
-	/* DMA init */
-	/* 1- DMA clock */
-	//SYSCTL_RCGCDMA_R = SYSCTL_RCGCDMA_R0;
 
-	/* 2- enable uDMA controller */
-	UDMA_CFG_R |= UDMA_CFG_MASTEN;
-	while((UDMA_STAT_R & UDMA_STAT_MASTEN) == 0)
-	{};
-	
-	/* 3- control table base */
-	UDMA_CTLBASE_R = (uint32_t) &dmaTable[0];
+
 
 	/*
 	 * GPIO Speaker config
