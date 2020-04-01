@@ -77,8 +77,8 @@ void spkDma(void)
 	/* transfer block using DMA */
 	dmaChRequest(
 		SPK_DMA_CH, 
-		(uint32_t *) sampleP, 
-		(uint32_t *) &SSI0_DR_R, 
+		(void *) sampleP, 
+		(void *) &SSI0_DR_R, 
 		numOfSample);
 
 	return;

@@ -86,8 +86,8 @@ static void wifiDmaRxRequest(void)
 
     dmaChRequest(
         WIFI_DMA_RX_CH,
-        (uint32_t *) &UART4_DR_R,
-        (uint32_t *) addr,
+        (void *) &UART4_DR_R,
+        (void *) addr,
         len);
 }
 
@@ -108,8 +108,8 @@ static void wifiDmaTxRequest(
 
     dmaChRequest(
         WIFI_DMA_TX_CH, 
-        (uint32_t *) addr, 
-        (uint32_t *) &UART4_DR_R, 
+        (void *) addr, 
+        (void *) &UART4_DR_R, 
         len);
 }
 

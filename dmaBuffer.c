@@ -78,7 +78,7 @@ dmaBufferReset(dmaBuffer_t *buff)
  *     option: 
  * return:
  *  valid address- unit reference
- *  0 failure or not required
+ *  0- failure or not required
  */
 void *
 dmaBufferPut(
@@ -154,7 +154,7 @@ dmaBufferPut(
  *     option: 
  * return:
  *  valid address- unit reference
- *  0 failure or not required
+ *  0- failure or not required
  */
 void *
 dmaBufferGet(

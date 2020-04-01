@@ -71,8 +71,8 @@ static void micDmaRequest(void)
 
 	dmaChRequest(
 		MIC_DMA_CH, 
-		(uint32_t *) &ADC0_SSFIFO0_R, 
-		(uint32_t *) &blockP->micDataBlock[0], //sample reference
+		(void *) &ADC0_SSFIFO0_R, 
+		(void *) &blockP->micDataBlock[0], //sample reference
 		MIC_BLOCK_NUM_OF_SP);                  //sample number
 }
 

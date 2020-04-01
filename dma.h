@@ -59,9 +59,9 @@ int dmaChInit(
  *         COMMON_RETURN_STATUS_FAILURE- transfer not requested due to on-going transfer
 **/
 int dmaChRequest(
-    uint8_t dmaChId,
-    uint32_t *srcAddr,
-    uint32_t *dstAddr,
-    uint32_t numOfElement);
+    int dmaChId,
+    void *srcAddr,
+    void *dstAddr,
+    int numOfElement);
 
 #endif // __DMA_H__
