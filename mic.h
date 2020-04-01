@@ -7,10 +7,11 @@
 #ifndef __MIC_H__
 #define __MIC_H__
 #include <stdint.h>
+#include "testMode.h"
 
 /* test feature */
 /* use fake 1011 tone data */
-#define MIC_TEST_1011_TONE   0 //1-enable, 0-disable
+#define MIC_TEST_1011_TONE   TEST_MODE_MIC_1011_TONE
 
 /* DC blocking filter */
 #define MIC_DC_BLOCK_FILTER  1  //1-IIR, 2-subtract DC

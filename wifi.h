@@ -8,9 +8,10 @@
 #ifndef __WIFI_H__
 #define __WIFI_H__
 #include <stdint.h>
+#include "testMode.h"
 
 /* Module test option */
-#define WIFI_TEST_CANNED_TX_PKT   0 // 1- send canned packets, 0- send regular packets
+#define WIFI_TEST_CANNED_TX_PKT   TEST_MODE_WIFI_CANNED_TX_PKT
 
 /* 
  * DMA definitions 
