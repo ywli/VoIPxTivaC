@@ -23,6 +23,11 @@
 #include "abm.h"
 #include "txTask.h"
 
+/** 
+ * Initialize TX task
+ * param: none
+ * return: none
+**/
 void txInit(void)
 {
     /* initialize mic module */
@@ -35,6 +40,11 @@ void txInit(void)
     rtpInit();
 }
 
+/** 
+ * one loop of TX task
+ * param: none
+ * return: none
+**/
 void txLoop()
 {
     wifiXferBlock_t *wifiPktP;
@@ -79,7 +89,11 @@ void txLoop()
     return;
 }
 
-/* from microphone to Wifi */
+/** 
+ * TX task
+ * param: pvParameters-> task argument
+ * return: none
+**/
 void txTask(void *pvParameters)
 {
     for (;;)

@@ -16,7 +16,12 @@
 #include "sys.h"
 #include "ui.h"
 
-int sysPllInit(void)
+/** 
+ * Initialize PLL
+ * param: none
+ * return: none
+**/
+static int sysPllInit(void)
 {
 	/* 
 	 * system clock to 80 MHz
@@ -62,7 +67,12 @@ int sysPllInit(void)
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
-int sysPinMicInit(void)
+/** 
+ * Initialize microphone IO pins
+ * param: none
+ * return: none
+**/
+static int sysPinMicInit(void)
 {
 	/* 
 	 * GPIO Microphone config 
@@ -85,7 +95,12 @@ int sysPinMicInit(void)
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
-int sysPinSpkInit(void)
+/** 
+ * Initialize speaker IO pins
+ * param: none
+ * return: none
+**/
+static int sysPinSpkInit(void)
 {
 	/*
 	 * GPIO Speaker config
@@ -141,7 +156,12 @@ int sysPinSpkInit(void)
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
-int sysPinWifiInit(void)
+/** 
+ * Initialize Wifi IO pins
+ * param: none
+ * return: none
+**/
+static int sysPinWifiInit(void)
 {
 	/* 
 	 * Wifi config 
@@ -176,7 +196,12 @@ int sysPinWifiInit(void)
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
-int sysPinUiInit(void)
+/** 
+ * Initialize UI IO pins
+ * param: none
+ * return: none
+**/
+static int sysPinUiInit(void)
 {
 	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R5;// activate clock for PortF
     while ((SYSCTL_PRGPIO_R & SYSCTL_RCGCGPIO_R5) == 0)
@@ -191,6 +216,12 @@ int sysPinUiInit(void)
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
+
+/** 
+ * Initialize system resources
+ * param: none
+ * return: none
+**/
 int sysInit(void)
 {
 	sysPllInit();

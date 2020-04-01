@@ -9,12 +9,20 @@
 #define __RTP_H__
 #include <stdint.h>
 
-
-#define RTP_STATUS_SUCCESS 1
-#define RTP_STATUS_FAILURE 0
-
+/** 
+ * Initialize module
+ * param: none
+ * return: none
+**/
 int rtpInit(void);
 
+/** 
+ * Generate RTP packet
+ * param: packetP (uint8_t*) -> packet reference
+ * param: sampleP (int16_t*) 	-> sample output
+ * param: sampleLenP (uint16_t*) 	-> number of sample output
+ * return: (int) -> 0- failure, postive integer- packet size in bytes
+**/
 int rtpWrite(
 	uint8_t* packetP,
 	const int16_t *sampleP,

@@ -50,7 +50,7 @@ typedef struct
 /** 
  * Initialize module
  * param: none
- * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int micInit(void);
 
@@ -66,14 +66,14 @@ micDataBlock_t* micBlockGet(void);
 /** 
  * Start audio capturing
  * param: none
- * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int micStart(void);
 
 /** 
  * Stop audio capturing
  * param: none
- * return: (int) -> MIC_STATUS_SUCCESS, MIC_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int micStop(void);
 

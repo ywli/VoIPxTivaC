@@ -20,7 +20,11 @@
 extern int wifiTxBackgroundTask2(int);
 int i = 0;
 
-/* hardware background task */
+/** 
+ * Hardware backgound task
+ * param: (void *) pvParameters-> task argument
+ * return: none
+**/
 void hwTask(void *pvParameters)
 {
     for (;;)

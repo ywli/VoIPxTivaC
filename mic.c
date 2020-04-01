@@ -178,7 +178,7 @@ void micTimerInit(void)
 /** 
  * Initialize module
  * param: none
- * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int micInit(void)
 {
@@ -205,8 +205,35 @@ int micInit(void)
 }
 
 
-/* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
-   Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
+// 
+//     Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
+//     Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
+//  
+//  #define NZEROS 2
+//  #define NPOLES 2
+//  #define GAIN   1.011169123e+00
+//  
+//  static float xv[NZEROS+1], yv[NPOLES+1];
+//  
+//  static void filterloop()
+//    { for (;;)
+//        { xv[0] = xv[1]; xv[1] = xv[2]; 
+//          xv[2] = `next input value' / GAIN;
+//          yv[0] = yv[1]; yv[1] = yv[2]; 
+//          yv[2] =   (xv[0] + xv[2]) - 2 * xv[1]
+//                       + ( -0.9780305085 * yv[0]) + (  1.9777864838 * yv[1]);
+//          `next output value' = yv[2];
+//        }
+//    }
+// 
+
+/** 
+ * Filter DC component out from the sample
+ * param: (int16_t *) input -> input array reference
+ * param: (int16_t *) output -> output array reference
+ * param: (int) num -> number of samples
+ * return: (int) -> execution status
+**/
 int micDcBlockFilter(
 	int16_t input[], 
 	int16_t output[], 
@@ -240,28 +267,6 @@ int micDcBlockFilter(
 	}
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
-#endif
-
-#if 0
-/* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
-   Command line: /www/usr/fisher/helpers/mkfilter -Bu -Hp -o 2 -a 2.5000000000e-03 0.0000000000e+00 -l */
-
-#define NZEROS 2
-#define NPOLES 2
-#define GAIN   1.011169123e+00
-
-static float xv[NZEROS+1], yv[NPOLES+1];
-
-static void filterloop()
-  { for (;;)
-      { xv[0] = xv[1]; xv[1] = xv[2]; 
-        xv[2] = `next input value' / GAIN;
-        yv[0] = yv[1]; yv[1] = yv[2]; 
-        yv[2] =   (xv[0] + xv[2]) - 2 * xv[1]
-                     + ( -0.9780305085 * yv[0]) + (  1.9777864838 * yv[1]);
-        `next output value' = yv[2];
-      }
-  }
 #endif
 
 /** 
@@ -313,7 +318,7 @@ micDataBlock_t* micBlockGet(void)
 /** 
  * Start audio capturing
  * param: none
- * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int micStart(void)
 {
@@ -325,7 +330,7 @@ int micStart(void)
 /** 
  * Stop audio capturing
  * param: none
- * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int micStop(void)
 {

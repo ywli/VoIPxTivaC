@@ -54,6 +54,11 @@ uint8_t wifiAtCmd0[] = "AT+CIPMUX=1\r\n";
 uint8_t wifiAtCmd1[] = "AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",56853\r\n";
 uint8_t wifiAtCmd2[] = "AT+CIPSEND=4,172\r\n";
 
+/** 
+ * Request UART RX DMA transfer
+ * param: none
+ * return: none
+**/
 static void wifiDmaRxRequest(void)
 {
     uint8_t *addr;
@@ -86,6 +91,11 @@ static void wifiDmaRxRequest(void)
         len);
 }
 
+/** 
+ * Request UART TX DMA transfer
+ * param: none
+ * return: none
+**/
 static void wifiDmaTxRequest(
     uint8_t *addr,
     int32_t len)
@@ -103,6 +113,11 @@ static void wifiDmaTxRequest(
         len);
 }
 
+/** 
+ * Initialize DMA
+ * param: none
+ * return: none
+**/
 static void wifiDmaInit(void)
 {
     /* set a DMA channel for transmit */
@@ -127,6 +142,11 @@ static void wifiDmaInit(void)
     return;
 }
 
+/** 
+ * Initialize TX packet blocks
+ * param: none
+ * return: none
+**/
 static void wifiTxPktInit(void)
 {
     /* initialize packet buffer */
@@ -160,6 +180,11 @@ static void wifiTxPktInit(void)
     #endif
 }
 
+/** 
+ * Initialize AT command blocks
+ * param: none
+ * return: none
+**/
 static void wifiAtInit(void)
 {
     /* AT command 0 */
@@ -175,6 +200,11 @@ static void wifiAtInit(void)
     wifiAtBlock[2].wifiPktSize = 18;
 }
 
+/** 
+ * Initialize UART
+ * param: none
+ * return: none
+**/
 static void wifiUartInit(void)
 {
     /* UART config */
@@ -208,6 +238,11 @@ static void wifiUartInit(void)
                   UART_CTL_TXE;
 }
 
+/** 
+ * Background task
+ * param: none
+ * return: none
+**/
 int wifiTxBackgroundTask2(int c)
 {
     wifiXferBlock_t *pktP = (wifiXferBlock_t *) 0;
@@ -270,7 +305,7 @@ int wifiTxBackgroundTask2(int c)
 /** 
  * Initialize module 
  * param: none
- * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int wifiInit(void)
 {
@@ -300,7 +335,7 @@ int wifiInit(void)
  * Read data from Wifi module
  * param: dataP -> output data reference
  * param: dataLen -> output data size in bytes
- * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
+* return: (int) -> execution status
 **/
 int wifiRead(
     uint8_t *dataP,
@@ -358,7 +393,7 @@ wifiXferBlock_t* wifiPktSend1(void)
  * Send packet (actual send the written packet, 
  *             returned by wifiPktSend1)
  * param: none
- * return: (int) -> COMMON_RETURN_STATUS_SUCCESS, COMMON_RETURN_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int wifiPktSend2(void)
 {

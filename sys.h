@@ -9,6 +9,11 @@
 #ifndef __SYS_H__
 #define __SYS_H__
 
+/** 
+ * Initialize system resources
+ * param: none
+ * return: none
+**/
 int sysInit(void);
 
 

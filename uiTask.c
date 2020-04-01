@@ -11,12 +11,15 @@
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "queue.h"
 
 /* project resources */
 #include "ui.h"
 
-// Flash the LEDs on the launchpad
+/** 
+ * UI task
+ * param: pvParameters -> task argument
+ * return: none
+**/
 void uiTask(void *pvParameters)
 {
     for (;;)

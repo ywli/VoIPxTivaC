@@ -37,7 +37,7 @@ typedef struct{
 /** 
  * Initialize module 
  * param: none
- * return: (int) -> WIFI_STATUS_SUCCESS, WIFI_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int wifiInit(void);
 
@@ -45,7 +45,7 @@ int wifiInit(void);
  * Read data from Wifi module
  * param: dataP -> output data reference
  * param: dataLen -> output data size in bytes
- * return: (int) -> WIFI_STATUS_SUCCESS, WIFI_STATUS_FAILURE
+* return: (int) -> execution status
 **/
 int wifiRead(
     uint8_t *dataP,
@@ -62,7 +62,7 @@ wifiXferBlock_t* wifiPktSend1(void);
  * Send packet (actual send the written packet, 
  *             returned by wifiPktSend1)
  * param: none
- * return: (int) -> WIFI_STATUS_SUCCESS, WIFI_STATUS_FAILURE
+ * return: (int) -> execution status
 **/
 int wifiPktSend2(void);
 

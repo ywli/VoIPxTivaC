@@ -23,6 +23,11 @@ typedef struct
 
 rtpControlBlock_t rtpCb;
 
+/** 
+ * Initialize module
+ * param: none
+ * return: none
+**/
 int rtpInit(void)
 {
 	/* initialize header tbd */
@@ -48,11 +53,9 @@ int rtpInit(void)
 /** 
  * Generate RTP packet
  * param: packetP (uint8_t*) -> packet reference
- * param: packetLen (uint16_t)	-> packet size in bytes
- * param: hdrP (struct rtp_header*)	-> packet header output
  * param: sampleP (int16_t*) 	-> sample output
  * param: sampleLenP (uint16_t*) 	-> number of sample output
- * return: (int)			-> 0 on failure, 1 on success
+ * return: (int) -> 0- failure, postive integer- packet size in bytes
 **/
 int rtpWrite(
 	uint8_t* packetP,
@@ -94,7 +97,7 @@ int rtpWrite(
 	if (res <= 0)
 	{
 		abmAbort();
-		return COMMON_RETURN_STATUS_FAILURE;
+		return 0;
 	}
 	wrP += res;
 

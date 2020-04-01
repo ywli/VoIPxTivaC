@@ -18,6 +18,11 @@
 #include "hwTask.h"
 #include "uiTask.h"
 
+/** 
+ * Initialize main
+ * param: none
+ * return: none
+**/
 void mainInit(void)
 {
     sysInit();
@@ -26,6 +31,11 @@ void mainInit(void)
     return;
 }
 
+/** 
+ * main function
+ * param: none
+ * return: (int) -> execution status
+**/
 int main(void)
 {
     /* initialize */
