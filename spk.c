@@ -14,6 +14,7 @@
 #include "common.h"
 #include "sys.h"
 #include "dma.h"
+#include "abm.h"
 #include "dmaBuffer.h"
 
 #if 1
@@ -64,7 +65,7 @@ void spkDma(void)
 
 	if (sampleP == 0)
 	{
-		return;//tbd
+		return;
 	}
 	dmaBufferGet(
 		&spkCb.spkBuffer,
@@ -82,11 +83,9 @@ void spkDma(void)
 
 	return;
 }
-int test = 0;
 
 void spkISR(void)
 {
-	test++;
 	/* confirm block DMA transfer */
 	//tbd 
 
@@ -192,15 +191,33 @@ int spkWrite(
 	uint16_t numOfSample)
 {
 	int16_t *dstSampleP;
+
 	/* put data into DMA buffer */
-	dstSampleP = dmaBufferPut(
+	dstSampleP = (int16_t *) dmaBufferPut(
 		&spkCb.spkBuffer,
 		DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1);
 	
+	/* if overrun, flush the old block */
 	if (dstSampleP == 0)
 	{
-		//error tbd
-		return COMMON_RETURN_STATUS_FAILURE;
+		/* overrun */
+		dmaBufferGet(
+		&spkCb.spkBuffer,
+		DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+
+		dmaBufferGet(
+		&spkCb.spkBuffer,
+		DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+
+		dstSampleP = (int16_t *) dmaBufferPut(
+			&spkCb.spkBuffer,
+			DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1);
+	}
+
+	/* if still no space */
+	if (dstSampleP == 0)
+	{
+		abmAbort();
 	}
 
 	dmaBufferPut(

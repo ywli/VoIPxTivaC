@@ -140,7 +140,6 @@ void micAdcInit(void)
 	/* 7- enable the sample sequencer0, p. 821  */
 	ADC0_ACTSS_R |= ADC_ACTSS_ASEN0;
 
-	/* process interrupts revise */
 	return;
 }
 
@@ -162,13 +161,12 @@ void micTimerInit(void)
 	TIMER0_CFG_R = TIMER_CFG_16_BIT;
 
 	/* 3 configure timer mode, p.729 */
-	TIMER0_TAMR_R = TIMER_TAMR_TAMR_PERIOD;//revise
+	TIMER0_TAMR_R = TIMER_TAMR_TAMR_PERIOD;
 
 	/* 5 set start value */
 	TIMER0_TAILR_R = 10000;//80 MHz / 8 kHz
 
-	/* 6 set interrupt */
-	//TIMER0_IMR_R = 0x00000001;//revise
+	/* 6 set interrupt omitted */
 
 	/* 7 enable timer, p.737 */
 	//TIMER0_CTL_R = TIMER_CTL_TAOTE | TIMER_CTL_TAEN;

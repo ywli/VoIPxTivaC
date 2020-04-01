@@ -24,12 +24,12 @@ rtpControlBlock_t rtpCb;
 
 int rtpInit(void)
 {
-	/* initialize header */
-	rtpCb.rtpTxHdr.bitfields = 0;//tbd
-	rtpCb.rtpTxHdr.sequence_number = 0;//tbd
-	rtpCb.rtpTxHdr.timestamp = 0;//tbd
-	rtpCb.rtpTxHdr.ssrc = 0;//tbd
-	rtpCb.rtpTxHdr.csrc[0] = 0;//tbd
+	/* initialize header tbd */
+	rtpCb.rtpTxHdr.bitfields = 0;
+	rtpCb.rtpTxHdr.sequence_number = 0;
+	rtpCb.rtpTxHdr.timestamp = 0;
+	rtpCb.rtpTxHdr.ssrc = 0;
+	rtpCb.rtpTxHdr.csrc[0] = 0;
 
 	/* initialize encoder */
 	if (g722_encoder_config(
@@ -65,9 +65,9 @@ int rtpWrite(
 	wrP = packetP;
 	hdrP = &rtpCb.rtpTxHdr;
 
-	/* update header variable */
+	/* update header variable tbd */
 	hdrP->sequence_number++;
-	hdrP->timestamp++;//tbd
+	hdrP->timestamp++;
 
 	/* generate header - 12 bytes */
 	*wrP++ = (uint8_t) ((hdrP->bitfields >> 8) & 0xFF);
