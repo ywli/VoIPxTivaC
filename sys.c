@@ -16,7 +16,7 @@
 #include "sys.h"
 #include "ui.h"
 
-int sysInit(void)
+int sysPllInit(void)
 {
 	/* 
 	 * system clock to 80 MHz
@@ -58,26 +58,31 @@ int sysInit(void)
 	// /* 5- enable PLL */
 	// SYSCTL_RCC_R &= ~SYSCTL_RCC_BYPASS;
 	// SYSCTL_RCC2_R &= ~SYSCTL_RCC2_BYPASS2;
+}
 
-	/* DMA */
-	dmaInit();
-	
-	/*
-	 * ADC 
+int sysPinMicInit(void)
+{
+	/* 
+	 * GPIO Microphone config 
+	 * used pins: 
+	 *   J3.09, PE3, AIN0
 	 */
+	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R4;
+    while ((SYSCTL_RCGCGPIO_R & SYSCTL_RCGCGPIO_R) == 0)// wait until ready
+    {};
 
-	/* step 1 enable clock to ADC module 0 */
-	SYSCTL_RCGCADC_R |= SYSCTL_RCGCADC_R0;
-	while ((SYSCTL_PRADC_R & SYSCTL_PRADC_R0) ==0 )
-	{};
-	/* enable timer0 */
-	SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R0;
-	while ((SYSCTL_PRTIMER_R & SYSCTL_PRTIMER_R0) == 0)
-	{};
+	/* step 3 set GPIO PE3 alternative function mode, p. 821  */
+	GPIO_PORTE_AFSEL_R |= (1<<3);
 
+	/* step 4 disable PE3 digital function, p.682 */
+	GPIO_PORTE_DEN_R |= ~(1<<3);
 
+	/* step 5 enable PE3 analog function, p.687 */
+	GPIO_PORTE_AMSEL_R |= (1<<3);
+}
 
-
+int sysPinSpkInit(void)
+{
 	/*
 	 * GPIO Speaker config
 	 * used pins:
@@ -128,7 +133,10 @@ int sysInit(void)
 	/* pull down PA5 */
 	GPIO_PORTA_PDR_R |= (1 << 5);
 	#endif
-	
+}
+
+int sysPinWifiInit(void)
+{
 	/* 
 	 * Wifi config 
 	 * used pins: 
@@ -158,27 +166,78 @@ int sysInit(void)
 	/* pull-up */
 	GPIO_PORTC_PUR_R |= (1 << 4)|
 	                    (1 << 5);
+}
+
+int sysPinUiInit(void)
+{
+	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R5;// activate clock for PortF
+    while ((SYSCTL_PRGPIO_R & SYSCTL_RCGCGPIO_R5) == 0)
+    {};                                     // wait until PortF is ready
+    GPIO_PORTF_LOCK_R = 0x4C4F434B;         // unlock GPIO PortF
+    GPIO_PORTF_CR_R = 0x1F;                 // allow changes to PF4-0
+    GPIO_PORTF_AMSEL_R = 0x00;              // disable analog on PortF
+    GPIO_PORTF_PCTL_R = 0x00000000;         // use PF4-0 as GPIO
+    GPIO_PORTF_DIR_R |= 0x02;               // PF2 output
+    GPIO_PORTF_AFSEL_R = 0x00;              // disable alt function on PF
+    GPIO_PORTF_DEN_R |= 0x02;               // enable digital I/O on PF4-0
+}
+int sysInit(void)
+{
+	sysPllInit();
+
+	/* DMA */
+	dmaInit();
+	
+	/*
+	 * ADC 
+	 */
+
+	/* step 1 enable clock to ADC module 0 */
+	SYSCTL_RCGCADC_R |= SYSCTL_RCGCADC_R0;
+	while ((SYSCTL_PRADC_R & SYSCTL_PRADC_R0) ==0 )
+	{};
+	/* enable timer0 */
+	SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R0;
+	while ((SYSCTL_PRTIMER_R & SYSCTL_PRTIMER_R0) == 0)
+	{};
+
+	/*
+	 * GPIO Speaker config
+	 * used pins:
+	 *   J1.06, PE5, M0PWM5, Bit Clock
+	 *   J1.07, PB4, M0PWM2, Frame Clock
+	 *   J1.08, PA5, SSI0TX, Data bit, pull-down
+	 *   J2.09, PA3, SSI0FSS
+	 *   J2.10, PA2, SSI0CLK
+	 */
+	sysPinSpkInit();
+
+	/* 1- enable ssi0 module */
+	SYSCTL_RCGCSSI_R |= SYSCTL_RCGCSSI_R0;
+	while ((SYSCTL_RCGCSSI_R & SYSCTL_RCGCSSI_R0) == 0)
+	{};
+
+	/* 5- PWM clock is system clock */
+	SYSCTL_RCC_R &= ~SYSCTL_RCC_USEPWMDIV;
+
+	
+	/* 
+	 * Wifi config 
+	 * used pins: 
+	 *   J4.04, PC4, U4RX
+	 *   J4.05, PC5, U4TX
+	 */
+	sysPinWifiInit();
 
 	/* 
 	 * GPIO Microphone config 
 	 * used pins: 
 	 *   J3.09, PE3, AIN0
 	 */
-	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R4;
-    while ((SYSCTL_RCGCGPIO_R & SYSCTL_RCGCGPIO_R) == 0)// wait until ready
-    {};
-
-	/* step 3 set GPIO PE3 alternative function mode, p. 821  */
-	GPIO_PORTE_AFSEL_R |= (1<<3);
-
-	/* step 4 disable PE3 digital function, p.682 */
-	GPIO_PORTE_DEN_R |= ~(1<<3);
-
-	/* step 5 enable PE3 analog function, p.687 */
-	GPIO_PORTE_AMSEL_R |= (1<<3);
+	sysPinMicInit();
 
 	/* UI */
-	ledInit();
+	sysPinUiInit();
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }

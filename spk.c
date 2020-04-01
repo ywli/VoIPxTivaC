@@ -109,8 +109,6 @@ int spkInit(void)
 	 * 32* 8k bit clock 
 	 */
 	#if (SPK_ARCH == 1)
-	/* 5- PWM clock is system clock */
-	SYSCTL_RCC_R &= ~SYSCTL_RCC_USEPWMDIV;
 
 	/* 6- configue PWM generator */
 	PWM0_2_CTL_R = 0;
@@ -141,12 +139,6 @@ int spkInit(void)
 	/* 
 	 * SPI 
 	 */
-	/* 1- enable ssi0 module */
-	SYSCTL_RCGCSSI_R |= SYSCTL_RCGCSSI_R0;
-	while ((SYSCTL_RCGCSSI_R & SYSCTL_RCGCSSI_R0) == 0)
-	{};
-	
-	/* 2-, 3-, 4-, 5- omitted */
 
 	/* 1- disable */
 	SSI0_CR1_R = 0;

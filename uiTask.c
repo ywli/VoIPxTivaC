@@ -22,6 +22,6 @@ void uiTask(void *pvParameters)
     for (;;)
     {
         vTaskDelay(1000);
-		ledToggle();
+		uiLedToggle();
     }
 }

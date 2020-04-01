@@ -1,14 +1,14 @@
 //*****************************************************************************
 //
-// mic.h - Microphone module
+// ui.h - user interface module
 //
 //
 //*****************************************************************************
 #ifndef __UI_H__
 #define __UI_H__
 
-void ledInit(void);
-void ledOn(void);
-void ledOff(void);
-void ledToggle(void);
+void uiLedOn(void);
+void uiLedOff(void);
+void uiLedToggle(void);
+
 #endif // __UI_H__
