@@ -184,7 +184,7 @@ int spkInit(void)
 
 	spkDma();
 
-	return;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 int spkWrite(
@@ -195,7 +195,7 @@ int spkWrite(
 	/* put data into DMA buffer */
 	dstSampleP = dmaBufferPut(
 		&spkCb.spkBuffer,
-		DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+		DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1);
 	
 	if (dstSampleP == 0)
 	{

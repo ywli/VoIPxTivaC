@@ -14,6 +14,7 @@
 #include "common.h"
 #include "dmaBuffer.h"
 #include "dma.h"
+#include "abm.h"
 #include "wifi.h"
 
 /* RX definitions */
@@ -69,10 +70,10 @@ static void wifiDmaRxRequest(void)
         DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1);
     if (addr == 0)
     {
-        //tbd: error
+        /* error */
+        abmAbort();
         return;
     }
-
     dmaBufferPut(
         &wifiCb.wifiRxBuffer,
         DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_2);
@@ -324,9 +325,33 @@ int wifiRead(
 **/
 wifiXferBlock_t* wifiPktSend1(void)
 {
-    return dmaBufferPut(
+    void *ret;
+
+    ret = dmaBufferPut(
             &wifiCb.wifiTxPktBuffer,
             DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1);
+
+    if (ret == 0)
+    {
+        dmaBufferGet(
+            &wifiCb.wifiTxPktBuffer,
+            DMA_BUFFER_GET_OPT_APP_GET_UNIT_1);
+
+        dmaBufferGet(
+            &wifiCb.wifiTxPktBuffer,
+            DMA_BUFFER_GET_OPT_APP_GET_UNIT_2);
+
+        ret = dmaBufferPut(
+            &wifiCb.wifiTxPktBuffer,
+            DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1);
+    }
+
+    if (ret == 0)
+    {
+        abmAbort();
+    }
+
+    return (wifiXferBlock_t *) ret;
 }
 
 /** 

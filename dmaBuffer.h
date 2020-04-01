@@ -83,7 +83,6 @@ dmaBufferReset(dmaBuffer_t *buff);
  *  valid address- unit reference
  *  0 failure or not required
  */
-//tbd: overrun condition 
 void *
 dmaBufferPut(
 	dmaBuffer_t *buff,
@@ -98,7 +97,6 @@ dmaBufferPut(
  *  valid address- unit reference
  *  0 failure or not required
  */
-//tbd: overrun condition 
 void *
 dmaBufferGet(
 	dmaBuffer_t *buff,

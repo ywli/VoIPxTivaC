@@ -80,7 +80,6 @@ dmaBufferReset(dmaBuffer_t *buff)
  *  valid address- unit reference
  *  0 failure or not required
  */
-//tbd: overrun condition 
 void *
 dmaBufferPut(
 	dmaBuffer_t *buff,
@@ -91,6 +90,7 @@ dmaBufferPut(
 	int end = buff->end;
 	int numOfFree = buff->numOfFree;
 	int numOfXfer = buff->numOfXfer;
+	int numofAvail = buff->numOfAvail;
 	int numOfTotal = buff->numOfTotal;
 	
 	if (option == DMA_BUFFER_PUT_OPT_APP_PUT_UNIT_1)
@@ -109,18 +109,20 @@ dmaBufferPut(
 	else if (option == DMA_BUFFER_PUT_OPT_DRV_PUT_UNIT_1)
 	{
 		/* case 3: prepare unit for DMA */
-		if ((numOfFree == 0) && (numOfXfer == 0))
+		if ((numOfFree == 0) && (numofAvail == 0))
 		{
+			/* error case, it is impossible that all blocks are transferring */
 			return 0;
 		}
 		else if (numOfFree == 0)
 		{
-			/* overrun */
+			/* overrun case */
 			buff->numOfXfer++;
 			buff->numOfAvail--;
 		}
 		else
 		{
+			/* normal case */
 			buff->numOfXfer++;
 			buff->numOfFree--;
 		}
@@ -133,6 +135,7 @@ dmaBufferPut(
 		buff->end = (end + 1) % numOfTotal;
 		buff->numOfAvail++;
 		buff->numOfXfer--;
+
 		return 0;
 	}
 	else
@@ -151,7 +154,6 @@ dmaBufferPut(
  *  valid address- unit reference
  *  0 failure or not required
  */
-//tbd: overrun condition 
 void *
 dmaBufferGet(
 	dmaBuffer_t *buff,
@@ -172,7 +174,7 @@ dmaBufferGet(
 	if (option == DMA_BUFFER_GET_OPT_APP_GET_UNIT_1)
 	{
 		/* case 1: get unit reference pointer */
-		return (void *)&buff->buff[start * unitSize];
+		return (numOfAvail == 0)? 0: (void *)&buff->buff[start * unitSize];
 	}
 	else if(option == DMA_BUFFER_GET_OPT_APP_GET_UNIT_2)
 	{
@@ -185,9 +187,16 @@ dmaBufferGet(
 	else if (option == DMA_BUFFER_GET_OPT_DRV_GET_UNIT_1)
 	{
 		/* case 3: prepare unit for DMA */
-		buff->numOfXfer++;
-		buff->numOfAvail--;
-		return (void *)&buff->buff[start * unitSize];
+		if (numOfAvail == 0)
+		{
+			return 0;
+		}
+		else
+		{
+			buff->numOfXfer++;
+			buff->numOfAvail--;
+			return (void *)&buff->buff[start * unitSize];
+		}
 	}
 	else if (option == DMA_BUFFER_GET_OPT_DRV_GET_UNIT_2)
 	{

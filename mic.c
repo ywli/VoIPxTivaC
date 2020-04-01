@@ -203,7 +203,7 @@ int micInit(void)
 	/* automatic start */
 	micStart();
 
-	return ;
+	return COMMON_RETURN_STATUS_SUCCESS;;
 }
 
 

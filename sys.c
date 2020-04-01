@@ -58,6 +58,8 @@ int sysPllInit(void)
 	// /* 5- enable PLL */
 	// SYSCTL_RCC_R &= ~SYSCTL_RCC_BYPASS;
 	// SYSCTL_RCC2_R &= ~SYSCTL_RCC2_BYPASS2;
+
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 int sysPinMicInit(void)
@@ -79,6 +81,8 @@ int sysPinMicInit(void)
 
 	/* step 5 enable PE3 analog function, p.687 */
 	GPIO_PORTE_AMSEL_R |= (1<<3);
+
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 int sysPinSpkInit(void)
@@ -133,6 +137,8 @@ int sysPinSpkInit(void)
 	/* pull down PA5 */
 	GPIO_PORTA_PDR_R |= (1 << 5);
 	#endif
+
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 int sysPinWifiInit(void)
@@ -166,6 +172,8 @@ int sysPinWifiInit(void)
 	/* pull-up */
 	GPIO_PORTC_PUR_R |= (1 << 4)|
 	                    (1 << 5);
+
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 int sysPinUiInit(void)
@@ -180,6 +188,8 @@ int sysPinUiInit(void)
     GPIO_PORTF_DIR_R |= 0x02;               // PF2 output
     GPIO_PORTF_AFSEL_R = 0x00;              // disable alt function on PF
     GPIO_PORTF_DEN_R |= 0x02;               // enable digital I/O on PF4-0
+
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 int sysInit(void)
 {

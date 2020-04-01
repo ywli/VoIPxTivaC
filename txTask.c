@@ -20,6 +20,7 @@
 #include "mic.h"
 #include "wifi.h"
 #include "rtp.h"
+#include "abm.h"
 #include "txTask.h"
 
 void txInit(void)
@@ -48,14 +49,12 @@ void txLoop()
     {
         return;
     }
-
-    /* apply filter */
     
-
     /* initialize buffer */
     wifiPktP = wifiPktSend1();
     if (wifiPktP == 0)
     {
+        /* TX busy */
         return;
     }
     
@@ -68,12 +67,14 @@ void txLoop()
                 MIC_BLOCK_NUM_OF_SP);
     if (wifiPktP->wifiPktSize <= 0)
     {
-        /* error tbd */
+        /* error */
+        abmAbort();
         return;
     }
     
-    /* send RTP packet over wifi */
+    /* send RTP packet */
     wifiPktSend2();
+
     return;
 }
 
