@@ -55,6 +55,7 @@ void txLoop()
     if (wifiPktP == 0)
     {
         /* TX busy */
+        abmAbort();
         return;
     }
     

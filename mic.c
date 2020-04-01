@@ -318,6 +318,7 @@ micDataBlock_t* micBlockGet(void)
 int micStart(void)
 {
 	TIMER0_CTL_R |= (TIMER_CTL_TAOTE | TIMER_CTL_TAEN);
+
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
@@ -329,5 +330,6 @@ int micStart(void)
 int micStop(void)
 {
 	TIMER0_CTL_R &= ~(TIMER_CTL_TAOTE | TIMER_CTL_TAEN);
+	
 	return COMMON_RETURN_STATUS_SUCCESS;
 }

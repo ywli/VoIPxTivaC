@@ -12,6 +12,7 @@
 
 /* project resource */
 #include "common.h"
+#include "abm.h"
 #include "rtp.h"
 
 typedef struct
@@ -37,6 +38,7 @@ int rtpInit(void)
 			64000,
 			G722_SAMPLE_RATE_8000) != 0)
 	{
+		abmAbort();
 		return COMMON_RETURN_STATUS_FAILURE;
 	}
 
@@ -91,6 +93,7 @@ int rtpWrite(
 			wrP);
 	if (res <= 0)
 	{
+		abmAbort();
 		return COMMON_RETURN_STATUS_FAILURE;
 	}
 	wrP += res;

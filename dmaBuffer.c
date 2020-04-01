@@ -5,6 +5,7 @@
  */
 
 #include "common.h"
+#include "abm.h"
 #include "dmaBuffer.h"
 
 /*
@@ -28,6 +29,7 @@ dmaBufferInit(
 	if ((bufSize % unitSize) != 0)
 	{
 		/* error */
+		abmAbort();
 		return COMMON_RETURN_STATUS_FAILURE;
 	}
 
@@ -68,8 +70,6 @@ dmaBufferReset(dmaBuffer_t *buff)
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
-
-
 
 /*
  * purpose: put data to buffer
@@ -112,6 +112,7 @@ dmaBufferPut(
 		if ((numOfFree == 0) && (numofAvail == 0))
 		{
 			/* error case, it is impossible that all blocks are transferring */
+			abmAbort();
 			return 0;
 		}
 		else if (numOfFree == 0)
@@ -141,6 +142,7 @@ dmaBufferPut(
 	else
 	{
 		/* option error */
+		abmAbort();
 		return 0;
 	}
 }
@@ -209,6 +211,7 @@ dmaBufferGet(
 	else
 	{
 		/* option error */
+		abmAbort();
 		return 0;
 	}
 }
