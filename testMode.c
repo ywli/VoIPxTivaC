@@ -13,7 +13,9 @@
 /* project resource */
 #include "common.h"
 #include "txTask.h"
+#include "testMode.h"
 
+long testModeTimerOverhead;
 /** 
  * Initialize timer
  * param: none
@@ -34,6 +36,10 @@ void testModeTimerInit(void)
 	/* 3 configure timer mode, p.729 */
 	WTIMER5_TAMR_R = TIMER_TAMR_TAMR_1_SHOT | 
                      TIMER_TAMR_TACDIR;
+
+    /* test timer overhead */
+    testModeTimerTic();
+    testModeTimerOverhead = testModeTimerToc();
 
 	return;
 }
@@ -73,7 +79,7 @@ long testModeTimerToc()
     WTIMER5_TAV_R = 0;
     WTIMER5_TBV_R = 0;
 
-    return tm;
+    return (tm - testModeTimerOverhead);
 }
 
 
