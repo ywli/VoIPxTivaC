@@ -17,6 +17,7 @@
 #include "queue.h"
 
 /* project resources */
+#include "common.h"
 #include "mic.h"
 #include "wifi.h"
 #include "rtp.h"
@@ -43,9 +44,9 @@ void txInit(void)
 /** 
  * one loop of TX task
  * param: none
- * return: none
+ * return: (int) -> execution status
 **/
-void txLoop()
+int txLoop(void)
 {
     wifiXferBlock_t *wifiPktP;
     micDataBlock_t *audioBlockP;
@@ -57,7 +58,7 @@ void txLoop()
     /* no data */
     if (audioBlockP == 0)
     {
-        return;
+        return COMMON_RETURN_STATUS_FAILURE;
     }
     
     /* initialize buffer */
@@ -66,7 +67,7 @@ void txLoop()
     {
         /* TX busy */
         abmAbort();
-        return;
+        return COMMON_RETURN_STATUS_FAILURE;
     }
     
     /* 
@@ -80,13 +81,13 @@ void txLoop()
     {
         /* error */
         abmAbort();
-        return;
+        return COMMON_RETURN_STATUS_FAILURE;
     }
     
     /* send RTP packet */
     wifiPktSend2();
 
-    return;
+    return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 /** 

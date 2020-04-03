@@ -17,6 +17,7 @@
 #include "txTask.h"
 #include "hwTask.h"
 #include "uiTask.h"
+#include "testMode.h"
 
 /** 
  * Initialize main
@@ -27,7 +28,6 @@ void mainInit(void)
 {
     sysInit();
     txInit();
-
     return;
 }
 
@@ -40,6 +40,10 @@ int main(void)
 {
     /* initialize */
 	mainInit();
+
+    #if TEST_MODE_MIPS_MEASURE
+    testModeMipsMeasure();
+    #endif
 
     xTaskCreate(uiTask, (const portCHAR *)"UI",
                 configMINIMAL_STACK_SIZE, NULL, 1, NULL);

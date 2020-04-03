@@ -15,6 +15,7 @@
 #include "dma.h"
 #include "sys.h"
 #include "ui.h"
+#include "testMode.h"
 
 /** 
  * Initialize PLL
@@ -279,6 +280,13 @@ int sysInit(void)
 
 	/* UI */
 	sysPinUiInit();
+
+	/* test mode resource */
+	SYSCTL_RCGCWTIMER_R |= SYSCTL_RCGCWTIMER_R5;
+	while ((SYSCTL_RCGCWTIMER_R & SYSCTL_RCGCWTIMER_R5) == 0)
+	{};
+
+	testModeTimerInit();
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
