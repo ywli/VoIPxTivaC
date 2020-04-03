@@ -8,7 +8,7 @@
 
 /* 3-rd party resources */
 #include "ez_rtp.h"
-#include "g722.h"
+#include "./libg722/g722.h"
 
 /* project resource */
 #include "common.h"
