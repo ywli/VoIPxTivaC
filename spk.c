@@ -17,11 +17,20 @@
 #include "abm.h"
 #include "dmaBuffer.h"
 
-#if 1
-#define SPK_BUFFER_NUM_OF_SP 1600
-#define SPK_SAMPLE_SIZE      2
-#define SPK_BUFFER_SIZE      (SPK_BUFFER_NUM_OF_SP * SPK_SAMPLE_SIZE)
-#define SPK_BLOCK_SIZE       SPK_BUFFER_SIZE/4
+/* microphone sampling rate */
+#define SPK_SAMPLE_RATE_HZ   8000
+
+/* 
+ * audio block definition 
+ */
+/* time duration of a block in ms */
+#define SPK_BLOCK_MS         5
+/* number of samples in a block */
+#define SPK_BLOCK_NUM_OF_SP  (SPK_SAMPLE_RATE_HZ * SPK_BLOCK_MS / 1000)
+/* size of block in bytes */
+#define SPK_BLOCK_SIZE       (SPK_BLOCK_NUM_OF_SP * sizeof(int16_t))
+/* number of blocks */
+#define SPK_BLOCK_NUM_OF     2
 
 /*
  * DMA definition
@@ -39,49 +48,45 @@ struct spkControlBlock
 {
 	dmaBuffer_t spkBuffer;
 };
-
-uint16_t spkSample[SPK_BUFFER_NUM_OF_SP];
+int16_t spkSampleArray[(SPK_BLOCK_NUM_OF_SP * SPK_BLOCK_NUM_OF)];
 
 struct spkControlBlock spkCb;
 
-/* 8ksps, 1011Hz, 8sp one cycle, max amp.: 32k */
-uint16_t spkTestData[] = 
-{
-0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
-};
+#define SPK_TEST_CANNED_WAVE 1
 
-void spkDma(void)
+int spkDma(void)
 {
-	uint16_t *sampleP;
-	uint32_t numOfSample;
+	int16_t *sampleP;
 
+	#if SPK_TEST_CANNED_WAVE
+	/* use canned wave, first block in the buffer */
+	sampleP = &spkSampleArray[0];
+	#else
 	/* only transfer when buffer level reach to some defined level revise */
 	/**/
 	
 	/* get data from buffer */
-	sampleP = (uint16_t *) dmaBufferGet(
+	sampleP = (int16_t *) dmaBufferGet(
 					&spkCb.spkBuffer,
 					DMA_BUFFER_GET_OPT_DRV_GET_UNIT_1);
 
 	if (sampleP == 0)
 	{
-		return;
+		return COMMON_RETURN_STATUS_FAILURE;
 	}
 	dmaBufferGet(
 		&spkCb.spkBuffer,
 		DMA_BUFFER_GET_OPT_DRV_GET_UNIT_2);
-
-	sampleP = &spkTestData[0];
-	numOfSample = sizeof(spkTestData) / sizeof(spkTestData[0]);
+	#endif
 
 	/* transfer block using DMA */
 	dmaChRequest(
 		SPK_DMA_CH, 
 		(void *) sampleP, 
 		(void *) &SSI0_DR_R, 
-		numOfSample);
+		SPK_BLOCK_NUM_OF_SP);
 
-	return;
+	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
 void spkISR(void)
@@ -95,13 +100,8 @@ void spkISR(void)
 	return;
 }
 
-int spkInit(void)
-{	
-	dmaBufferInit(
-		&spkCb.spkBuffer, 
-		(void *) &spkSample[0],
-		sizeof(spkSample),
-		SPK_BLOCK_SIZE);
+int spkPwmInit(void)
+{
 	/* 
 	 * PWM
 	 * 8k frame clock 
@@ -113,7 +113,7 @@ int spkInit(void)
 	PWM0_2_CTL_R = 0;
 	PWM0_1_CTL_R = 0;
 	PWM0_2_GENB_R = PWM_2_GENB_ACTLOAD_ZERO|
-					PWM_2_GENB_ACTCMPAD_ONE;
+					PWM_2_GENB_ACTCMPBD_ONE;
 	PWM0_1_GENA_R = PWM_1_GENA_ACTLOAD_ZERO|
 					PWM_1_GENA_ACTCMPAD_ONE;
 
@@ -126,15 +126,19 @@ int spkInit(void)
 	PWM0_1_CMPA_R = 4992;//N1*16
 
 	/* 9- start PWM timer */
-	PWM0_2_CTL_R |= PWM_2_CTL_ENABLE | PWM_2_CTL_DEBUG;
-	PWM0_1_CTL_R |= PWM_1_CTL_ENABLE | PWM_1_CTL_DEBUG;
+	PWM0_2_CTL_R |= PWM_2_CTL_ENABLE;// | PWM_2_CTL_DEBUG;
+	PWM0_1_CTL_R |= PWM_1_CTL_ENABLE;// | PWM_1_CTL_DEBUG;
 
 	/* 10- enable PWM output */
 	PWM0_ENABLE_R |= PWM_ENABLE_PWM5EN|
 	                 PWM_ENABLE_PWM2EN;
 
 	#endif
+	return COMMON_RETURN_STATUS_SUCCESS;
+}
 
+int spkSpiInit(void)
+{
 	/* 
 	 * SPI 
 	 */
@@ -172,6 +176,39 @@ int spkInit(void)
 
 	/* 7- enable SSI0 */
 	SSI0_CR1_R |= SSI_CR1_SSE;
+	return COMMON_RETURN_STATUS_SUCCESS;
+}
+
+int spkInit(void)
+{	
+	/* initialize buffer */
+	dmaBufferInit(
+		&spkCb.spkBuffer, 
+		(void *) &spkSampleArray[0],
+		sizeof(spkSampleArray),
+		SPK_BLOCK_SIZE);
+	
+	/* create canned wave block */
+	#if SPK_TEST_CANNED_WAVE
+	int i;
+	/* 8ksps, 1011Hz, 8sp one cycle, max amp.: 32k */
+	static const int16_t spkTestData[] = 
+	{
+		0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
+
+
+		//5000,6913,8536,9619,10000,9619,8536,6913,
+		//5000,3087,1464,381,0,381,1464,3087,
+
+		//5000, 5000, 5000, 5000, -5000, -5000, -5000, -5000,
+		//10000, 10000, 10000, 10000, 0, 0, 0, 0
+	};
+	for (i = 0; i < SPK_BLOCK_NUM_OF_SP; i++)
+	{
+		spkSampleArray[i] = ((spkTestData[(i *2) % 8]-0) >> 1) & 0x7FFF;
+		//spkSampleArray[i] = 1000;
+	}
+	#endif
 
     /* set a DMA channel for transmit */
 	dmaChInit(
@@ -181,7 +218,16 @@ int spkInit(void)
 		SPK_DMA_DIR,
 		SPK_DMA_ELEMENT_SIZE);
 
+	/* initialize SPI module */
+	spkSpiInit();
+
+	#if SPK_TEST_CANNED_WAVE
+	/* start audio data transfer */
 	spkDma();
+	#endif
+
+	/* initialize PWM module */
+	spkPwmInit();
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
@@ -235,5 +281,3 @@ int spkWrite(
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
-
-#endif

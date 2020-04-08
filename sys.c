@@ -112,11 +112,6 @@ static int sysPinSpkInit(void)
 	 *   J2.09, PA3, SSI0FSS
 	 *   J2.10, PA2, SSI0CLK
 	 */
-	#if 0
-	/* 1- enable PWM clock */
-	SYSCTL_RCGC0_R |= SYSCTL_RCGC0_PWM0;
-	while ((SYSCTL_RCGC0_R & SYSCTL_RCGC0_PWM0) == 0)
-	{};
 
 	/* 2- enable clock to gpio module */
 	SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R1|
@@ -124,7 +119,7 @@ static int sysPinSpkInit(void)
 						 SYSCTL_RCGCGPIO_R0;
     while ((SYSCTL_PRGPIO_R & SYSCTL_PRGPIO_R1) == 0)// wait until PortB is ready
     {};                                     
-	while ((SYSCTL_PRGPIO_R & SYSCTL_PRGPIO_R4) == 0)// wait until PortB is ready
+	while ((SYSCTL_PRGPIO_R & SYSCTL_PRGPIO_R4) == 0)// wait until PortE is ready
     {};                                     
 	while ((SYSCTL_PRGPIO_R & SYSCTL_PRGPIO_R0) == 0)// wait until PortA is ready
     {};
@@ -152,7 +147,6 @@ static int sysPinSpkInit(void)
 
 	/* pull down PA5 */
 	GPIO_PORTA_PDR_R |= (1 << 5);
-	#endif
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
@@ -218,6 +212,7 @@ static int sysPinUiInit(void)
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
+extern int spkInit(void);
 /** 
  * Initialize system resources
  * param: none
@@ -259,8 +254,15 @@ int sysInit(void)
 	while ((SYSCTL_RCGCSSI_R & SYSCTL_RCGCSSI_R0) == 0)
 	{};
 
+	/* 1- enable PWM clock */
+	SYSCTL_RCGCPWM_R |= SYSCTL_RCGCPWM_R0;
+	while ((SYSCTL_RCGCPWM_R & SYSCTL_RCGCPWM_R0) == 0)
+	{};
+
 	/* 5- PWM clock is system clock */
 	SYSCTL_RCC_R &= ~SYSCTL_RCC_USEPWMDIV;
+
+	spkInit();
 
 	
 	/* 
