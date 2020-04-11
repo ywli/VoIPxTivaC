@@ -5,3 +5,6 @@ Release/
 .settings/
 workspace_vscode.code-workspace
 .project
+.launches/project02.launch
+targetConfigs/Tiva TM4C123GH6PM.ccxml
+targetConfigs/readme.txt
