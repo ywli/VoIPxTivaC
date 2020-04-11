@@ -107,7 +107,8 @@ static int sysPinSpkInit(void)
 	 * GPIO Speaker config
 	 * used pins:
 	 *   J1.06, PE5, M0PWM5, Bit Clock
-	 *   J1.07, PB4, M0PWM2, Frame Clock
+	 *   J1.07, PB4, M0PWM2, Frame Clock I2S
+	 *   J1.02, PB5, M0PWM3, Frame Clock SPI
 	 *   J1.08, PA5, SSI0TX, Data bit, pull-down
 	 *   J2.09, PA3, SSI0FSS
 	 *   J2.10, PA2, SSI0CLK
@@ -127,20 +128,23 @@ static int sysPinSpkInit(void)
 	/* 3- gpio gpioafsel register config */
 	GPIO_PORTE_AFSEL_R |= (1<<5);// PE5
 	GPIO_PORTB_AFSEL_R |= (1<<4);// PB4
+	GPIO_PORTB_AFSEL_R |= (1<<5);// PB5
 	GPIO_PORTA_AFSEL_R |= (1 << 5)|
 	                      (1 << 3)|
 						  (1 << 2);
 
 	/* 4- gpioctl register config */
-	GPIO_PORTE_PCTL_R |= GPIO_PCTL_PE5_M0PWM5;
-	GPIO_PORTB_PCTL_R |= GPIO_PCTL_PB4_M0PWM2;
+	GPIO_PORTE_PCTL_R |= GPIO_PCTL_PE5_M0PWM5;//PE5
+	GPIO_PORTB_PCTL_R |= GPIO_PCTL_PB4_M0PWM2;//PB4
+	GPIO_PORTB_PCTL_R |= GPIO_PCTL_PB5_M0PWM3;//PB5
 	GPIO_PORTA_PCTL_R |= GPIO_PCTL_PA5_SSI0TX|
 						 GPIO_PCTL_PA3_SSI0FSS|
 						 GPIO_PCTL_PA2_SSI0CLK;
 
 	/* 5- enable digital */
-	GPIO_PORTE_DEN_R |= (1<<5);
-	GPIO_PORTB_DEN_R |= (1<<4);
+	GPIO_PORTE_DEN_R |= (1<<5);//PE5
+	GPIO_PORTB_DEN_R |= (1<<4);//PB4
+	GPIO_PORTB_DEN_R |= (1<<5);//PB5
 	GPIO_PORTA_DEN_R |= (1 << 5)|
 	                    (1 << 3)|
 						(1 << 2);

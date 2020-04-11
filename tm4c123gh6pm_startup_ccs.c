@@ -60,6 +60,7 @@ extern void vPortSVCHandler(void);
 extern void xPortSysTickHandler(void);
 extern void micISR(void);
 extern void spkISR(void);
+extern void spkPwmIsr(void);
 
 //*****************************************************************************
 //
@@ -99,7 +100,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      // I2C0 Master and Slave
     IntDefaultHandler,                      // PWM Fault
     IntDefaultHandler,                      // PWM Generator 0
-    IntDefaultHandler,                      // PWM Generator 1
+    spkPwmIsr,                              // PWM Generator 1
     IntDefaultHandler,                      // PWM Generator 2
     IntDefaultHandler,                      // Quadrature Encoder 0
     micISR,                                 // ADC Sequence 0

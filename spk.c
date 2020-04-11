@@ -24,13 +24,13 @@
  * audio block definition 
  */
 /* time duration of a block in ms */
-#define SPK_BLOCK_MS         5
+#define SPK_BLOCK_MS         20
 /* number of samples in a block */
 #define SPK_BLOCK_NUM_OF_SP  (SPK_SAMPLE_RATE_HZ * SPK_BLOCK_MS / 1000)
 /* size of block in bytes */
 #define SPK_BLOCK_SIZE       (SPK_BLOCK_NUM_OF_SP * sizeof(int16_t))
 /* number of blocks */
-#define SPK_BLOCK_NUM_OF     2
+#define SPK_BLOCK_NUM_OF     1
 
 /*
  * DMA definition
@@ -42,7 +42,14 @@
 #define SPK_DMA_DIR           DMA_DIR_RAM_TO_IO
 #define SPK_DMA_ELEMENT_SIZE  2
 
-#define SPK_ARCH             1 //1- SPI slave + PWM, 2- SPI master
+#define SPK_ARCH              1 //1- SPI slave + PWM, 2- SPI master
+
+
+/* number of system clock cycles for a frame clock cycle */
+#define SPK_PWM_FRAME_CLOCK_N (SYS_SYSTEM_CLOCK_HZ/SPK_SAMPLE_RATE_HZ)
+
+/* number of system clock cycles for a bit clock cycle */
+#define SPK_PWM_BIT_CLOCK_N   ((SYS_SYSTEM_CLOCK_HZ/SPK_SAMPLE_RATE_HZ/32)+1)
 
 struct spkControlBlock
 {
@@ -100,6 +107,21 @@ void spkISR(void)
 	return;
 }
 
+void spkPwmIsr(void)
+{
+	/* clear interrupt */
+	PWM0_ISC_R |= PWM_ISC_INTPWM1;
+	
+	/* reload bit clock PWM counter */
+	PWM0_2_LOAD_R = SPK_PWM_BIT_CLOCK_N;
+	return;
+}
+
+/*
+ * J1.06, PE5, M0PWM5, Bit Clock
+ * J1.07, PB4, M0PWM2, Frame Clock SPI
+ * J1.02, PB5, M0PWM3, Frame Clock I2S
+ */
 int spkPwmInit(void)
 {
 	/* 
@@ -107,33 +129,47 @@ int spkPwmInit(void)
 	 * 8k frame clock 
 	 * 32* 8k bit clock 
 	 */
-	#if (SPK_ARCH == 1)
-
-	/* 6- configue PWM generator */
+	
+	/* disable PWM */
 	PWM0_2_CTL_R = 0;
 	PWM0_1_CTL_R = 0;
-	PWM0_2_GENB_R = PWM_2_GENB_ACTLOAD_ZERO|
+
+	/* 6- configue PWM generator */
+	PWM0_2_GENB_R = PWM_2_GENB_ACTLOAD_ZERO|//Bit Clock
 					PWM_2_GENB_ACTCMPBD_ONE;
-	PWM0_1_GENA_R = PWM_1_GENA_ACTLOAD_ZERO|
-					PWM_1_GENA_ACTCMPAD_ONE;
+
+	PWM0_1_GENA_R = PWM_1_GENA_ACTZERO_ZERO|//Frame Clock I2S
+	                PWM_1_GENA_ACTLOAD_ONE;
+
+	PWM0_1_GENB_R = PWM_1_GENB_ACTZERO_ONE| //Frame Clock SPI
+					PWM_1_GENB_ACTCMPAU_ZERO|
+					PWM_1_GENB_ACTLOAD_ZERO|
+					PWM_1_GENB_ACTCMPBD_ONE;
 
 	/* 7- set period */
-	PWM0_2_LOAD_R = 312; //N1 = round(80M/32/8k)
-	PWM0_1_LOAD_R = 9984;//N1*32
+	PWM0_2_LOAD_R = SPK_PWM_BIT_CLOCK_N; //Bit Clock
+	PWM0_1_LOAD_R = (SPK_PWM_FRAME_CLOCK_N/2);//Frame Clock I2S and SPI
 
 	/* 8- pulse width */
-	PWM0_2_CMPB_R = 156;//N1/2
-	PWM0_1_CMPA_R = 4992;//N1*16
+	PWM0_2_CMPB_R = (SPK_PWM_BIT_CLOCK_N / 2);
+	PWM0_1_CMPA_R = (SPK_PWM_BIT_CLOCK_N + 10);
+	PWM0_1_CMPB_R = ((SPK_PWM_FRAME_CLOCK_N/2) - SPK_PWM_BIT_CLOCK_N - 10);
 
 	/* 9- start PWM timer */
-	PWM0_2_CTL_R |= PWM_2_CTL_ENABLE;// | PWM_2_CTL_DEBUG;
-	PWM0_1_CTL_R |= PWM_1_CTL_ENABLE;// | PWM_1_CTL_DEBUG;
+	PWM0_2_CTL_R |= PWM_2_CTL_ENABLE;
+	PWM0_1_CTL_R |= PWM_1_CTL_ENABLE|
+	                PWM_1_CTL_MODE;  //counter up down 
 
 	/* 10- enable PWM output */
 	PWM0_ENABLE_R |= PWM_ENABLE_PWM5EN|
-	                 PWM_ENABLE_PWM2EN;
+	                 PWM_ENABLE_PWM2EN|
+					 PWM_ENABLE_PWM3EN;
 
-	#endif
+	PWM0_INTEN_R |= PWM_INTEN_INTPWM1;
+	PWM0_1_INTEN_R |= PWM_0_INTEN_INTCNTZERO;
+	/* enable interrupt, interrupt 11 PWM0 Generater 1 */
+	NVIC_EN0_R |= (1<<11);
+
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
 
@@ -194,18 +230,20 @@ int spkInit(void)
 	/* 8ksps, 1011Hz, 8sp one cycle, max amp.: 32k */
 	static const int16_t spkTestData[] = 
 	{
-		0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
+		//0x3e80, 0x6ab2, 0x7d00, 0x6ab2, 0x3e80, 0x124e, 0x0000, 0x124e
 
 
 		//5000,6913,8536,9619,10000,9619,8536,6913,
 		//5000,3087,1464,381,0,381,1464,3087,
 
-		//5000, 5000, 5000, 5000, -5000, -5000, -5000, -5000,
+		5000, 5000, 5000, 5000, -5000, -5000, -5000, -5000,
+		//5000, 5000, -5000, -5000, 5000, 5000, -5000, -5000,
+		//5000, -5000, 5000, -5000, 5000, -5000, 5000, -5000,
 		//10000, 10000, 10000, 10000, 0, 0, 0, 0
 	};
 	for (i = 0; i < SPK_BLOCK_NUM_OF_SP; i++)
 	{
-		spkSampleArray[i] = ((spkTestData[(i *2) % 8]-0) >> 1) & 0x7FFF;
+		spkSampleArray[i] = spkTestData[i % 8];
 		//spkSampleArray[i] = 1000;
 	}
 	#endif
@@ -227,7 +265,9 @@ int spkInit(void)
 	#endif
 
 	/* initialize PWM module */
+	#if (SPK_ARCH == 1)
 	spkPwmInit();
+	#endif
 
 	return COMMON_RETURN_STATUS_SUCCESS;
 }
